@@ -1,0 +1,1683 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Управление бюджетом</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #F8F9FA;
+            --card-bg: #FFFFFF;
+            --text-main: #2C2C2E;
+            --text-muted: #8E8E93;
+            --border-color: rgba(0, 0, 0, 0.06);
+            --input-bg: #F4F4F6;
+
+            --pastel-green: #E8F5E9;
+            --text-green: #2E7D32;
+
+            --pastel-red: #FFEBEE;
+            --text-red: #C62828;
+
+            --pastel-blue: #E3F2FD;
+            --text-blue: #1565C0;
+
+            --pastel-purple: #F3E5F5;
+            --text-purple: #6A1B9A;
+
+            --shadow: 0 4px 18px rgba(0, 0, 0, 0.05);
+            --border-radius: 18px;
+
+            /* Безопасные отступы под вырез Dynamic Island / кнопки Telegram и нижний бар */
+            --top-safe: max(115px, calc(env(safe-area-inset-top, 54px) + 56px));
+            --bottom-nav-height: 64px;
+            --bottom-safe: max(90px, calc(env(safe-area-inset-bottom, 20px) + var(--bottom-nav-height) + 14px));
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            overscroll-behavior: none;
+            overscroll-behavior-y: none;
+            -webkit-user-select: none;
+            user-select: none;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        input,
+        textarea {
+            -webkit-user-select: text;
+            user-select: text;
+        }
+
+        #app-container {
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: none;
+            overscroll-behavior-y: none;
+            padding-top: var(--top-safe);
+            padding-bottom: var(--bottom-safe);
+            padding-left: 16px;
+            padding-right: 16px;
+            box-sizing: border-box;
+        }
+
+        h2 {
+            font-size: 24px;
+            font-weight: 700;
+            text-align: center;
+            margin: 0 0 16px 0;
+            color: var(--text-main);
+            letter-spacing: -0.3px;
+        }
+
+        .page {
+            display: none;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .page.active {
+            display: flex;
+            animation: fadeIn 0.22s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* КАРТОЧКА СВОДКИ */
+        .summary-card {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 16px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+
+        .summary-title {
+            text-align: center;
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            font-weight: 600;
+            text-transform: capitalize;
+            letter-spacing: 0.2px;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .summary-item {
+            border-radius: 14px;
+            padding: 12px 6px;
+            text-align: center;
+            transition: transform 0.15s;
+        }
+
+        .summary-item:active {
+            transform: scale(0.97);
+        }
+
+        .summary-item.income {
+            background: var(--pastel-green);
+        }
+
+        .summary-item.expense {
+            background: var(--pastel-red);
+        }
+
+        .summary-item.balance {
+            background: var(--pastel-blue);
+        }
+
+        .summary-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .summary-val {
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .summary-item.income .summary-val {
+            color: var(--text-green);
+        }
+
+        .summary-item.expense .summary-val {
+            color: var(--text-red);
+        }
+
+        .summary-item.balance .summary-val {
+            color: var(--text-blue);
+        }
+
+        /* КАРТОЧКА БЫСТРОГО ВВОДА */
+        .quick-expense-card {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 18px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .quick-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .quick-card-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .quick-card-date {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-blue);
+            background: var(--pastel-blue);
+            padding: 4px 10px;
+            border-radius: 12px;
+        }
+
+        .quick-input-row {
+            display: flex;
+            gap: 10px;
+            align-items: stretch;
+        }
+
+        .quick-select-wrap {
+            position: relative;
+            flex: 1.35;
+            min-width: 0;
+        }
+
+        .quick-category-select {
+            width: 100%;
+            height: 48px;
+            appearance: none;
+            -webkit-appearance: none;
+            background-color: var(--input-bg);
+            border: 1.5px solid transparent;
+            border-radius: 14px;
+            padding: 0 32px 0 12px;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-main);
+            font-family: inherit;
+            outline: none;
+            cursor: pointer;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            overflow: hidden;
+            transition: all 0.2s;
+            box-sizing: border-box;
+        }
+
+        .quick-category-select:focus {
+            border-color: var(--text-blue);
+            background-color: #FFFFFF;
+            box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.12);
+        }
+
+        .quick-select-arrow {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .quick-amount-wrap {
+            position: relative;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .quick-amount-input {
+            width: 100%;
+            height: 48px;
+            background-color: var(--input-bg);
+            border: 1.5px solid transparent;
+            border-radius: 14px;
+            padding: 0 28px 0 12px;
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--text-main);
+            text-align: right;
+            font-family: inherit;
+            outline: none;
+            transition: all 0.2s;
+            box-sizing: border-box;
+        }
+
+        .quick-amount-input:focus {
+            border-color: var(--text-blue);
+            background-color: #FFFFFF;
+            box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.12);
+        }
+
+        .quick-currency {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .quick-today-hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+            padding: 0 2px;
+        }
+
+        .quick-today-hint strong {
+            color: var(--text-main);
+        }
+
+        .quick-submit-btn {
+            width: 100%;
+            background: #2E7D32;
+            color: #FFFFFF;
+            border: none;
+            padding: 14px;
+            border-radius: 14px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(46, 125, 50, 0.22);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: transform 0.1s, background-color 0.15s, opacity 0.15s;
+        }
+
+        .quick-submit-btn:active {
+            transform: scale(0.98);
+            background: #1B5E20;
+        }
+
+        .quick-submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .quick-feedback {
+            border-radius: 12px;
+            padding: 10px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            display: none;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        .quick-feedback.success {
+            background: var(--pastel-green);
+            color: var(--text-green);
+            border: 1px solid rgba(46, 125, 50, 0.2);
+        }
+
+        .quick-feedback.error {
+            background: var(--pastel-red);
+            color: var(--text-red);
+            border: 1px solid rgba(198, 40, 40, 0.2);
+        }
+
+        /* КНОПКИ МЕНЮ НА ГЛАВНОЙ */
+        .menu-btn {
+            background: var(--card-bg);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 18px 20px;
+            border-radius: var(--border-radius);
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.12s, box-shadow 0.12s;
+        }
+
+        .menu-btn:active {
+            transform: scale(0.98);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+        }
+
+        .menu-btn.income-btn {
+            border-left: 6px solid var(--text-green);
+        }
+
+        .menu-btn.expense-btn {
+            border-left: 6px solid var(--text-red);
+        }
+
+        .menu-btn.stats-btn {
+            border-left: 6px solid var(--text-purple);
+        }
+
+        .btn-arrow {
+            color: var(--text-muted);
+            font-size: 22px;
+            font-weight: 300;
+        }
+
+        /* СЕТКА МЕСЯЦЕВ */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .month-btn {
+            background-color: var(--card-bg);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 15px 4px;
+            border-radius: 14px;
+            font-weight: 600;
+            font-size: 14px;
+            box-shadow: var(--shadow);
+            cursor: pointer;
+            transition: transform 0.1s, background-color 0.15s;
+            text-transform: capitalize;
+        }
+
+        .month-btn:active {
+            transform: scale(0.95);
+            background-color: #F0F0F2;
+        }
+
+        /* ЧИПСЫ В ШАПКЕ */
+        .header-chips {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .today-chip,
+        .month-chip {
+            background: var(--pastel-blue);
+            color: var(--text-blue);
+            border: 1px solid rgba(21, 101, 192, 0.15);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            width: auto;
+            height: auto;
+            white-space: nowrap;
+            line-height: normal;
+            font-family: inherit;
+            box-shadow: none;
+            transition: transform 0.12s, background 0.15s, opacity 0.15s;
+        }
+
+        .today-chip:disabled {
+            cursor: default;
+        }
+
+        .today-chip:disabled:active {
+            transform: none;
+        }
+
+        .month-chip {
+            background: #F4F4F6;
+            color: var(--text-main);
+            border-color: rgba(0, 0, 0, 0.08);
+        }
+
+        .today-chip:not(:disabled):active,
+        .month-chip:active {
+            transform: scale(0.94);
+        }
+
+        /* ШАПКА ДНЕЙ / МЕСЯЦЕВ */
+        .header-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0 14px 0;
+            color: var(--text-main);
+        }
+
+        .header-controls>button {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            font-size: 22px;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: transform 0.1s, opacity 0.15s;
+        }
+
+        .header-controls>button:active:not(:disabled) {
+            transform: scale(0.92);
+        }
+
+        .header-controls>button:disabled {
+            opacity: 0.35;
+            box-shadow: none;
+        }
+
+        .header-title-box {
+            text-align: center;
+            flex: 1;
+            padding: 0 10px;
+            cursor: pointer;
+        }
+
+        .header-title {
+            font-size: 18px;
+            font-weight: 700;
+            text-transform: capitalize;
+            display: block;
+        }
+
+        .header-subtitle {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+            margin-top: 2px;
+        }
+
+        /* СТРОКИ КАТЕГОРИЙ И ДОХОДОВ */
+        .category-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            transition: transform 0.1s;
+        }
+
+        .category-row:active {
+            transform: scale(0.995);
+        }
+
+        .category-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .category-icon-box {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 19px;
+            flex-shrink: 0;
+            box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.03);
+        }
+
+        .category-text-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .category-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-main);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .person-tag {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 6px;
+            display: inline-block;
+            width: fit-content;
+            letter-spacing: 0.2px;
+            text-transform: uppercase;
+        }
+
+        .tag-maxim {
+            background: #E3F2FD;
+            color: #1565C0;
+        }
+
+        .tag-yasya {
+            background: #FCE4EC;
+            color: #C2185B;
+        }
+
+        .tag-general {
+            background: #F5F5F5;
+            color: #616161;
+        }
+
+        /* ПОЛЯ ВВОДА */
+        .category-input-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .category-input {
+            width: 110px;
+            padding: 10px 24px 10px 10px;
+            border-radius: 12px;
+            border: 1.5px solid transparent;
+            background-color: var(--input-bg);
+            color: var(--text-main);
+            font-size: 16px;
+            text-align: right;
+            font-weight: 700;
+            outline: none;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .category-input:focus {
+            border-color: var(--text-blue);
+            background-color: #FFFFFF;
+            box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.12);
+        }
+
+        .currency-symbol {
+            position: absolute;
+            right: 8px;
+            font-size: 13px;
+            color: var(--text-muted);
+            pointer-events: none;
+            font-weight: 600;
+        }
+
+        /* КАРТОЧКА ИТОГО ЗА ДЕНЬ / МЕСЯЦ */
+        .daily-total-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 18px;
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            margin-top: 4px;
+        }
+
+        .daily-total-label {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .daily-total-val {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--text-red);
+        }
+
+        .daily-total-val.green {
+            color: var(--text-green);
+        }
+
+        /* КНОПКА СОХРАНИТЬ */
+        .save-btn {
+            background: linear-gradient(135deg, #1976D2, #1565C0);
+            color: #ffffff;
+            border: none;
+            padding: 16px;
+            border-radius: 16px;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 8px;
+            width: 100%;
+            box-shadow: 0 4px 16px rgba(21, 101, 192, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: transform 0.12s, box-shadow 0.12s;
+        }
+
+        .save-btn:active {
+            transform: scale(0.98);
+            box-shadow: 0 2px 8px rgba(21, 101, 192, 0.2);
+        }
+
+        /* СОВРЕМЕННЫЙ НИЖНИЙ НАВИГАЦИОННЫЙ БАР */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 16px));
+            padding-bottom: env(safe-area-inset-bottom, 16px);
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border-top: 1px solid rgba(0, 0, 0, 0.08);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 999;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.04);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            color: var(--text-muted);
+            background: none;
+            border: none;
+            padding: 6px 12px;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            flex: 1;
+        }
+
+        .nav-item .nav-icon {
+            font-size: 20px;
+            transition: transform 0.18s ease;
+        }
+
+        .nav-item .nav-label {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.1px;
+            transition: color 0.18s ease;
+        }
+
+        .nav-item.active {
+            color: var(--text-blue);
+        }
+
+        .nav-item.active .nav-icon {
+            transform: scale(1.18);
+        }
+
+        .nav-item.active .nav-label {
+            color: var(--text-blue);
+            font-weight: 700;
+        }
+
+        .nav-item:active {
+            transform: scale(0.92);
+        }
+
+        /* ВСПЛЫВАЮЩИЙ TOAST */
+        .toast {
+            position: fixed;
+            bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 20px) + 16px);
+            left: 50%;
+            transform: translateX(-50%) translateY(90px);
+            background: rgba(30, 30, 30, 0.94);
+            color: #ffffff;
+            padding: 12px 22px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
+            opacity: 0;
+            transition: all 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 9999;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(10px);
+            white-space: nowrap;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app-container">
+
+        <!-- ЭКРАН 1: ГЛАВНОЕ МЕНЮ -->
+        <div id="page-menu" class="page active">
+            <h2>Бюджет</h2>
+            <div class="summary-card">
+                <div class="summary-title" id="mainMonthTitle">Загрузка...</div>
+                <div class="summary-grid">
+                    <div class="summary-item income" onclick="showTab('income')">
+                        <div class="summary-label">Доходы</div>
+                        <div class="summary-val" id="mainInc">...</div>
+                    </div>
+                    <div class="summary-item expense" onclick="showTab('expenses')">
+                        <div class="summary-label">Расходы</div>
+                        <div class="summary-val" id="mainExp">...</div>
+                    </div>
+                    <div class="summary-item balance" onclick="showTab('stats')">
+                        <div class="summary-label">Остаток</div>
+                        <div class="summary-val" id="mainBal">...</div>
+                    </div>
+                </div>
+            </div>
+            <!-- БЫСТРЫЙ ВВОД РАСХОДА -->
+            <div class="quick-expense-card">
+                <div class="quick-card-header">
+                    <span class="quick-card-title">⚡ Быстрый расход</span>
+                    <span class="quick-card-date" id="quickExpenseDate">Сегодня</span>
+                </div>
+
+                <div class="quick-input-row">
+                    <div class="quick-select-wrap">
+                        <select id="quickCategorySelect" class="quick-category-select" onchange="onQuickCatChange()">
+                        </select>
+                        <span class="quick-select-arrow">▾</span>
+                    </div>
+                    <div class="quick-amount-wrap">
+                        <input type="number" id="quickAmountInput" class="quick-amount-input" placeholder="0" inputmode="decimal" oninput="onQuickAmountInput()" onkeydown="if(event.key==='Enter') submitQuickExpense()">
+                        <span class="quick-currency">₽</span>
+                    </div>
+                </div>
+
+                <div id="quickTodayHint" class="quick-today-hint" style="display:none;"></div>
+
+                <button id="btnQuickSubmit" class="quick-submit-btn" onclick="submitQuickExpense()">
+                    <span id="quickSubmitText">✓ Записать расход</span>
+                </button>
+
+                <div id="quickFeedback" class="quick-feedback"></div>
+            </div>
+        </div>
+
+        <!-- ДОХОДЫ -->
+        <div id="page-income-months" class="page">
+            <h2>Доходы: 2026</h2>
+            <div class="grid" id="income-grid"></div>
+        </div>
+
+        <div id="page-income-form" class="page">
+            <div class="header-controls">
+                <button id="incBtnPrev" onclick="changeIncomeMonth(-1)">‹</button>
+                <div class="header-title-box" onclick="showPage('page-income-months')">
+                    <span class="header-title" id="incomeTitle">Доходы</span>
+                    <span class="header-subtitle">Нажмите для выбора месяца ▾</span>
+                </div>
+                <button id="incBtnNext" onclick="changeIncomeMonth(1)">›</button>
+            </div>
+            <div id="incomeContainer" style="display:flex; flex-direction:column; gap:10px;">Загрузка...</div>
+            <div class="daily-total-card">
+                <span class="daily-total-label">Итого доходов</span>
+                <span class="daily-total-val green"><span id="incomeTotal">0</span> ₽</span>
+            </div>
+            <button class="save-btn" onclick="saveIncome()">💾 Сохранить доходы</button>
+        </div>
+
+        <!-- РАСХОДЫ -->
+        <div id="page-expense-months" class="page">
+            <h2>Расходы: 2026</h2>
+            <div class="grid" id="expense-grid"></div>
+        </div>
+
+        <div id="page-expense-daily" class="page">
+            <div class="header-controls">
+                <button id="btnPrev" onclick="changeDay(-1)">‹</button>
+                <div class="header-title-box">
+                    <span class="header-title" id="dateDisplay">Загрузка...</span>
+                    <span class="header-subtitle" id="weekdayDisplay"></span>
+                    <div class="header-chips">
+                        <button id="btnToday" class="today-chip" onclick="goToToday()">📅 Сегодня</button>
+                        <button class="month-chip" onclick="showPage('page-expense-months')">📅 Месяцы</button>
+                    </div>
+                </div>
+                <button id="btnNext" onclick="changeDay(1)">›</button>
+            </div>
+            <div id="formContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
+            <div class="daily-total-card">
+                <span class="daily-total-label">Итого за день</span>
+                <span class="daily-total-val"><span id="dailyTotal">0</span> ₽</span>
+            </div>
+            <button class="save-btn" onclick="saveData()">💾 Сохранить день</button>
+        </div>
+
+        <!-- СТАТИСТИКА -->
+        <div id="page-statistics-months" class="page">
+            <h2>Статистика: 2026</h2>
+            <div class="grid" id="statistics-grid"></div>
+        </div>
+
+        <div id="page-statistics-view" class="page">
+            <div class="header-controls" style="justify-content:center;">
+                <div class="header-title-box" onclick="showPage('page-statistics-months')">
+                    <span class="header-title" id="statTitle">Статистика</span>
+                    <span class="header-subtitle">Нажмите для выбора месяца ▾</span>
+                </div>
+            </div>
+            <div id="statLoading" style="text-align:center; padding:20px; color:var(--text-muted);">Анализируем
+                данные...</div>
+
+            <div id="statContent" style="display:none; flex-direction:column; gap:16px;">
+                <div class="summary-card" style="margin:0;">
+                    <div class="summary-grid">
+                        <div class="summary-item income">
+                            <div class="summary-label">Доходы</div>
+                            <div class="summary-val" id="statTotalInc">0 ₽</div>
+                        </div>
+                        <div class="summary-item expense">
+                            <div class="summary-label">Расходы</div>
+                            <div class="summary-val" id="statTotalExp">0 ₽</div>
+                        </div>
+                        <div class="summary-item balance">
+                            <div class="summary-label">Остаток</div>
+                            <div class="summary-val" id="statDelta">0 ₽</div>
+                        </div>
+                    </div>
+                </div>
+                <div
+                    style="position: relative; width: 100%; max-width: 260px; margin: 0 auto; background: var(--card-bg); padding: 20px; border-radius: var(--border-radius); box-shadow: var(--shadow); border: 1px solid var(--border-color);">
+                    <canvas id="expenseChart"></canvas>
+                </div>
+                <div id="statCategories" style="display:flex; flex-direction:column; gap:10px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- НИЖНЯЯ ПАНЕЛЬ НАВИГАЦИИ (ТАБ-БАР) -->
+    <div class="bottom-nav">
+        <button class="nav-item active" id="tab-main" onclick="showTab('main')">
+            <span class="nav-icon">🏠</span>
+            <span class="nav-label">Главная</span>
+        </button>
+        <button class="nav-item" id="tab-expenses" onclick="showTab('expenses')">
+            <span class="nav-icon">🛒</span>
+            <span class="nav-label">Расходы</span>
+        </button>
+        <button class="nav-item" id="tab-income" onclick="showTab('income')">
+            <span class="nav-icon">💰</span>
+            <span class="nav-label">Доходы</span>
+        </button>
+        <button class="nav-item" id="tab-stats" onclick="showTab('stats')">
+            <span class="nav-icon">📊</span>
+            <span class="nav-label">Аналитика</span>
+        </button>
+    </div>
+
+    <!-- ВСПЛЫВАЮЩИЙ TOAST -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+        let tg = window.Telegram ? window.Telegram.WebApp : null;
+        if (tg) {
+            try {
+                tg.ready();
+                tg.expand();
+                if (typeof tg.requestFullscreen === 'function') {
+                    tg.requestFullscreen();
+                }
+                // Запрещаем Telegram смещать и тянуть шторку приложения (как у BotFather)
+                if (typeof tg.disableVerticalSwipes === 'function') {
+                    tg.disableVerticalSwipes();
+                }
+                if (typeof tg.enableClosingConfirmation === 'function') {
+                    tg.enableClosingConfirmation();
+                }
+                tg.setHeaderColor('#F8F9FA');
+                tg.setBackgroundColor('#F8F9FA');
+
+                // Динамический расчет безопасных отступов под вырез и статус-бар
+                function applySafeAreas() {
+                    let topInset = 54;
+                    if (tg.safeAreaInset && tg.safeAreaInset.top) {
+                        topInset = Math.max(topInset, tg.safeAreaInset.top);
+                    }
+                    if (tg.contentSafeAreaInset && tg.contentSafeAreaInset.top) {
+                        topInset = Math.max(topInset, tg.contentSafeAreaInset.top);
+                    }
+                    // Telegram-капсулы занимают зону до ~95px от верхнего края экрана.
+                    // Отступ минимум 115px гарантирует свободное пространство под кнопками Telegram.
+                    let finalTop = Math.max(115, topInset + 56);
+                    document.documentElement.style.setProperty('--top-safe', finalTop + 'px');
+                }
+                applySafeAreas();
+                if (tg.onEvent) {
+                    tg.onEvent('safeAreaChanged', applySafeAreas);
+                    tg.onEvent('contentSafeAreaChanged', applySafeAreas);
+                }
+            } catch (e) { }
+        }
+
+        // ================= HAPTIC FEEDBACK (ТАКТИЛЬНЫЙ ОТКЛИК) =================
+        function haptic(type = 'light') {
+            try {
+                if (tg && tg.HapticFeedback) {
+                    if (type === 'success' || type === 'error' || type === 'warning') {
+                        tg.HapticFeedback.notificationOccurred(type);
+                    } else if (['light', 'medium', 'heavy', 'rigid', 'soft'].includes(type)) {
+                        tg.HapticFeedback.impactOccurred(type);
+                    } else if (type === 'selection') {
+                        tg.HapticFeedback.selectionChanged();
+                    }
+                }
+            } catch (e) { }
+        }
+
+        // ================= TOAST УВЕДОМЛЕНИЯ =================
+        function showToast(text, isError = false) {
+            const toast = document.getElementById('toast');
+            toast.innerHTML = (isError ? '⚠️ ' : '✅ ') + text;
+            toast.style.background = isError ? 'rgba(211, 47, 47, 0.95)' : 'rgba(30, 30, 30, 0.94)';
+            toast.classList.add('show');
+            haptic(isError ? 'error' : 'success');
+            clearTimeout(window.toastTimer);
+            window.toastTimer = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2200);
+        }
+
+        const monthsRu = ["январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"];
+        const currentYear = 2026;
+
+        const incGrid = document.getElementById('income-grid');
+        const expGrid = document.getElementById('expense-grid');
+        const statGrid = document.getElementById('statistics-grid');
+        monthsRu.forEach((m, idx) => {
+            const mStr = `${m} ${currentYear}`;
+            incGrid.innerHTML += `<button class="month-btn" onclick="openIncome('${mStr}')">${m}</button>`;
+            expGrid.innerHTML += `<button class="month-btn" onclick="openExpenseMonth(${idx}, ${currentYear})">${m}</button>`;
+            statGrid.innerHTML += `<button class="month-btn" onclick="openStatistics('${mStr}')">${m}</button>`;
+        });
+
+        let currentActiveTab = 'main';
+
+        function showPage(pageId) {
+            haptic('selection');
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            const container = document.getElementById('app-container');
+            if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
+
+            // Управление нативной кнопкой BackButton в Telegram
+            if (tg && tg.BackButton) {
+                if (pageId === 'page-menu') {
+                    tg.BackButton.hide();
+                } else {
+                    tg.BackButton.show();
+                    tg.BackButton.onClick(() => {
+                        haptic('light');
+                        if (pageId === 'page-expense-months') showPage('page-expense-daily');
+                        else if (pageId === 'page-income-months') showPage('page-income-form');
+                        else if (pageId === 'page-statistics-months') showPage('page-statistics-view');
+                        else showTab('main');
+                    });
+                }
+            }
+        }
+
+        // ================= ТАБЫ НИЖНЕГО БАРА =================
+        function showTab(tabName) {
+            haptic('selection');
+            currentActiveTab = tabName;
+            document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.getElementById(`tab-${tabName}`);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            const now = new Date();
+            const currentMonthStr = `${monthsRu[now.getMonth()]} ${currentYear}`;
+
+            if (tabName === 'main') {
+                showPage('page-menu');
+            } else if (tabName === 'expenses') {
+                openExpenseMonth(now.getMonth(), currentYear);
+            } else if (tabName === 'income') {
+                openIncome(currentIncomeMonth || currentMonthStr);
+            } else if (tabName === 'stats') {
+                openStatistics(currentMonthStr);
+            }
+        }
+
+        // КАТЕГОРИИ С ИКОНКАМИ И ЦВЕТАМИ
+        const categories = {
+            "продукты": { name: "Продукты", icon: "🛒", bg: "#E8F5E9", color: "#2E7D32" },
+            "обеды": { name: "Обеды", icon: "🍽", bg: "#FFF3E0", color: "#E65100" },
+            "транспорт": { name: "Транспорт", icon: "🚕", bg: "#E3F2FD", color: "#1565C0" },
+            "хозтовары": { name: "Хозтовары", icon: "🧼", bg: "#F3E5F5", color: "#7B1FA2" },
+            "связь": { name: "Связь", icon: "📱", bg: "#E0F2F1", color: "#00695C" },
+            "одежда": { name: "Одежда", icon: "👕", bg: "#FCE4EC", color: "#C2185B" },
+            "зоотовары": { name: "Зоотовары", icon: "🐾", bg: "#EFEBE9", color: "#4E342E" },
+            "репетитор": { name: "Репетитор", icon: "👨‍🏫", bg: "#EDE7F6", color: "#5E35B1" },
+            "здоровье": { name: "Здоровье", icon: "💊", bg: "#FFEBEE", color: "#C62828" },
+            "уход": { name: "Уход за собой", icon: "🧴", bg: "#FCE4EC", color: "#880E4F" },
+            "развлечения": { name: "Развлечения", icon: "🍿", bg: "#FFF9C4", color: "#F57F17" },
+            "подарки": { name: "Подарки", icon: "🎁", bg: "#E1F5FE", color: "#0277BD" },
+            "вклады": { name: "Вклады и счета", icon: "🏦", bg: "#E8F5E9", color: "#1B5E20" },
+            "учеба": { name: "Учёба", icon: "📚", bg: "#FFF8E1", color: "#FF8F00" },
+            "билеты": { name: "Билеты", icon: "🎫", bg: "#F3E5F5", color: "#4A148C" },
+            "квартира": { name: "Квартира", icon: "🏠", bg: "#E0F7FA", color: "#006064" }
+        };
+
+        // ================= БЫСТРЫЙ ВВОД РАСХОДА =================
+        let todayExpensesMap = {};
+
+        function initQuickExpense() {
+            const select = document.getElementById('quickCategorySelect');
+            if (!select) return;
+            select.innerHTML = '';
+            for (let key in categories) {
+                const cat = categories[key];
+                const opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = `${cat.icon} ${cat.name}`;
+                select.appendChild(opt);
+            }
+
+            const dt = new Date();
+            const dateStr = dt.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+            const dateEl = document.getElementById('quickExpenseDate');
+            if (dateEl) {
+                dateEl.innerText = `Сегодня, ${dateStr}`;
+            }
+
+            onQuickCatChange();
+        }
+
+        function onQuickCatChange() {
+            const select = document.getElementById('quickCategorySelect');
+            if (!select) return;
+            const catKey = select.value;
+            const hintEl = document.getElementById('quickTodayHint');
+            const currentToday = parseFloat(todayExpensesMap[catKey]) || 0;
+            if (currentToday > 0) {
+                const cat = categories[catKey];
+                hintEl.innerHTML = `Сегодня в «${cat ? cat.name : catKey}» уже записано: <strong>${currentToday.toLocaleString('ru-RU')} ₽</strong>`;
+                hintEl.style.display = 'block';
+            } else {
+                hintEl.style.display = 'none';
+            }
+            updateQuickSubmitButtonText();
+        }
+
+        function onQuickAmountInput() {
+            updateQuickSubmitButtonText();
+        }
+
+        function updateQuickSubmitButtonText() {
+            const btnText = document.getElementById('quickSubmitText');
+            const select = document.getElementById('quickCategorySelect');
+            const input = document.getElementById('quickAmountInput');
+            if (!btnText || !select || !input) return;
+
+            const catKey = select.value;
+            const inputVal = parseFloat(input.value) || 0;
+            const currentToday = parseFloat(todayExpensesMap[catKey]) || 0;
+
+            if (inputVal > 0) {
+                if (currentToday > 0) {
+                    const total = currentToday + inputVal;
+                    btnText.innerText = `✓ Добавить +${inputVal.toLocaleString('ru-RU')} ₽ (станет ${total.toLocaleString('ru-RU')} ₽)`;
+                } else {
+                    btnText.innerText = `✓ Записать ${inputVal.toLocaleString('ru-RU')} ₽`;
+                }
+            } else {
+                btnText.innerText = '✓ Записать расход';
+            }
+        }
+
+        async function submitQuickExpense() {
+            const select = document.getElementById('quickCategorySelect');
+            const input = document.getElementById('quickAmountInput');
+            const btn = document.getElementById('btnQuickSubmit');
+            const btnText = document.getElementById('quickSubmitText');
+            const feedback = document.getElementById('quickFeedback');
+
+            const catKey = select.value;
+            const amount = parseFloat(input.value);
+
+            if (!amount || amount <= 0) {
+                input.focus();
+                feedback.className = 'quick-feedback error';
+                feedback.innerText = '⚠️ Введите сумму больше 0';
+                feedback.style.display = 'block';
+                setTimeout(() => { feedback.style.display = 'none'; }, 3000);
+                return;
+            }
+
+            haptic('medium');
+            btn.disabled = true;
+            btnText.innerText = '⏳ Запись в таблицу...';
+            feedback.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/quick-expense', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ category: catKey, amount: amount })
+                });
+                const res = await response.json();
+
+                if (res.status === 'ok') {
+                    haptic('success');
+                    const cat = categories[catKey];
+                    const catName = cat ? cat.name : catKey;
+                    const newTot = res.new_total;
+                    todayExpensesMap[catKey] = newTot;
+
+                    const day = res.day || new Date().getDate();
+                    if (currentMonthData[day]) {
+                        currentMonthData[day][catKey] = String(newTot);
+                    }
+
+                    feedback.className = 'quick-feedback success';
+                    feedback.innerHTML = `✓ Успешно! Добавлено <strong>+${amount.toLocaleString('ru-RU')} ₽</strong> в «${catName}»<br><small>Всего за сегодня: ${Number(newTot).toLocaleString('ru-RU')} ₽</small>`;
+                    feedback.style.display = 'block';
+
+                    input.value = '';
+                    onQuickCatChange();
+
+                    await loadMainSummary();
+
+                    setTimeout(() => {
+                        feedback.style.display = 'none';
+                    }, 4500);
+                } else {
+                    haptic('error');
+                    feedback.className = 'quick-feedback error';
+                    feedback.innerText = 'Ошибка: ' + (res.message || 'не удалось записать');
+                    feedback.style.display = 'block';
+                }
+            } catch (err) {
+                haptic('error');
+                feedback.className = 'quick-feedback error';
+                feedback.innerText = 'Ошибка сети. Проверьте интернет';
+                feedback.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                updateQuickSubmitButtonText();
+            }
+        }
+
+        // Загрузка главной сводки
+        async function loadMainSummary() {
+            let d = new Date();
+            let mName = monthsRu[d.getMonth()];
+            let monthStr = `${mName} ${currentYear}`;
+            document.getElementById('mainMonthTitle').innerText = monthStr;
+
+            try {
+                const [expRes, incRes] = await Promise.all([
+                    fetch(`/api/expenses/month?month_str=${monthStr}`),
+                    fetch(`/api/income?month=${monthStr}`)
+                ]);
+                const expJson = await expRes.json();
+                const incJson = await incRes.json();
+
+                let totalExp = 0, totalInc = 0;
+                if (expJson.status === "ok") {
+                    const todayDay = new Date().getDate();
+                    if (expJson.data && expJson.data[todayDay]) {
+                        todayExpensesMap = expJson.data[todayDay];
+                        onQuickCatChange();
+                    }
+                    for (let day in expJson.data)
+                        for (let k in expJson.data[day])
+                            totalExp += parseFloat(expJson.data[day][k]) || 0;
+                }
+                if (incJson.status === "ok") {
+                    incJson.data.forEach(item => totalInc += parseFloat(item.amount) || 0);
+                }
+
+                document.getElementById('mainInc').innerText = totalInc.toLocaleString('ru-RU') + ' ₽';
+                document.getElementById('mainExp').innerText = totalExp.toLocaleString('ru-RU') + ' ₽';
+                let bal = totalInc - totalExp;
+                let balEl = document.getElementById('mainBal');
+                balEl.innerText = bal.toLocaleString('ru-RU') + ' ₽';
+                balEl.style.color = bal >= 0 ? 'var(--text-blue)' : 'var(--text-red)';
+            } catch (e) { }
+        }
+        initQuickExpense();
+        loadMainSummary();
+
+        // ================= СТАТИСТИКА =================
+        let chartInstance = null;
+        async function openStatistics(monthStr) {
+            haptic('medium');
+            document.getElementById('statTitle').innerText = 'Аналитика: ' + monthStr;
+            showPage('page-statistics-view');
+            document.getElementById('statLoading').style.display = 'block';
+            document.getElementById('statContent').style.display = 'none';
+
+            try {
+                const [expRes, incRes] = await Promise.all([
+                    fetch(`/api/expenses/month?month_str=${monthStr}`),
+                    fetch(`/api/income?month=${monthStr}`)
+                ]);
+                const expJson = await expRes.json();
+                const incJson = await incRes.json();
+
+                let totalExp = 0, totalInc = 0;
+                let catTotals = {};
+                for (let k in categories) catTotals[k] = 0;
+
+                if (expJson.status === "ok") {
+                    for (let d in expJson.data) {
+                        for (let k in expJson.data[d]) {
+                            let val = parseFloat(expJson.data[d][k]) || 0;
+                            catTotals[k] += val; totalExp += val;
+                        }
+                    }
+                }
+                if (incJson.status === "ok") {
+                    incJson.data.forEach(item => totalInc += parseFloat(item.amount) || 0);
+                }
+
+                document.getElementById('statTotalInc').innerText = totalInc.toLocaleString('ru-RU') + ' ₽';
+                document.getElementById('statTotalExp').innerText = totalExp.toLocaleString('ru-RU') + ' ₽';
+                let delta = totalInc - totalExp;
+                let deltaEl = document.getElementById('statDelta');
+                deltaEl.innerText = delta.toLocaleString('ru-RU') + ' ₽';
+                deltaEl.style.color = delta >= 0 ? 'var(--text-blue)' : 'var(--text-red)';
+
+                let sortedCats = Object.keys(catTotals).sort((a, b) => catTotals[b] - catTotals[a]);
+                let chartLabels = [], chartData = [];
+                let chartColors = [
+                    '#4CAF50', '#FF9800', '#2196F3', '#9C27B0', '#009688', 
+                    '#E91E63', '#795548', '#673AB7', '#F44336', '#EC407A', 
+                    '#FFC107', '#03A9F4', '#2E7D32', '#FF5722', '#7E57C2', '#00BCD4'
+                ];
+
+                let listHtml = '';
+                sortedCats.forEach((k, i) => {
+                    let val = catTotals[k];
+                    let catInfo = categories[k] || { name: k, icon: '🏷', bg: '#f0f0f0', color: '#666' };
+                    if (val > 0) {
+                        let color = chartColors[i % chartColors.length];
+                        chartLabels.push(catInfo.name);
+                        chartData.push(val);
+                        listHtml += `<div class="category-row">
+                            <div class="category-left">
+                                <div class="category-icon-box" style="background:${catInfo.bg}; color:${catInfo.color}; font-size:18px;">${catInfo.icon}</div>
+                                <span class="category-name">${catInfo.name}</span>
+                            </div>
+                            <strong style="font-size:15px; font-weight:700;">${val.toLocaleString('ru-RU')} ₽</strong>
+                        </div>`;
+                    }
+                });
+                if (chartData.length === 0) listHtml = '<div style="text-align:center; color:var(--text-muted); padding:20px;">Нет расходов в этом месяце</div>';
+                document.getElementById('statCategories').innerHTML = listHtml;
+
+                if (chartInstance) chartInstance.destroy();
+                chartInstance = new Chart(document.getElementById('expenseChart').getContext('2d'), {
+                    type: 'doughnut',
+                    data: { labels: chartLabels, datasets: [{ data: chartData, backgroundColor: chartColors, borderWidth: 0 }] },
+                    options: { responsive: true, plugins: { legend: { display: false } }, cutout: '70%' }
+                });
+
+                document.getElementById('statLoading').style.display = 'none';
+                document.getElementById('statContent').style.display = 'flex';
+            } catch (e) {
+                document.getElementById('statLoading').innerText = 'Ошибка загрузки данных';
+            }
+        }
+
+        // ================= ДОХОДЫ =================
+        let currentIncomeMonth = '';
+
+        function getIncomeIcon(name) {
+            const lower = name.toLowerCase();
+            if (lower.includes('зарплата')) return { icon: '💼', bg: '#E8F5E9', color: '#2E7D32' };
+            if (lower.includes('аванс')) return { icon: '💵', bg: '#E3F2FD', color: '#1565C0' };
+            if (lower.includes('премия')) return { icon: '🎉', bg: '#FFF8E1', color: '#F57F17' };
+            if (lower.includes('кэшбэк')) return { icon: '💳', bg: '#FFFDE7', color: '#FBC02D' };
+            if (lower.includes('стипендия')) return { icon: '🎓', bg: '#EDE7F6', color: '#512DA8' };
+            if (lower.includes('остаток')) return { icon: '🏦', bg: '#ECEFF1', color: '#455A64' };
+            return { icon: '💰', bg: '#E8F5E9', color: '#2E7D32' };
+        }
+
+        function getPersonTag(name) {
+            const lower = name.toLowerCase();
+            if (lower.includes('максим')) return '<span class="person-tag tag-maxim">Максим</span>';
+            if (lower.includes('яся')) return '<span class="person-tag tag-yasya">Яся</span>';
+            return '<span class="person-tag tag-general">Общее</span>';
+        }
+
+        function calculateIncomeTotal() {
+            let total = 0;
+            if (window.currentIncomeData) {
+                window.currentIncomeData.forEach(item => {
+                    const el = document.getElementById('inc_' + item.row);
+                    if (el && el.value) {
+                        total += parseFloat(el.value) || 0;
+                    }
+                });
+            }
+            document.getElementById('incomeTotal').innerText = total.toLocaleString('ru-RU');
+        }
+
+        async function openIncome(monthStr) {
+            haptic('medium');
+            currentIncomeMonth = monthStr;
+            document.getElementById('incomeTitle').innerText = monthStr;
+            showPage('page-income-form');
+            document.getElementById('incomeContainer').innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Загрузка...</div>';
+
+            let mName = monthStr.split(' ')[0];
+            let mIdx = monthsRu.indexOf(mName);
+            document.getElementById('incBtnPrev').disabled = (mIdx === 0);
+            document.getElementById('incBtnNext').disabled = (mIdx === 11);
+
+            try {
+                const res = await fetch(`/api/income?month=${monthStr}`);
+                const json = await res.json();
+                if (json.status === "ok") {
+                    let html = '';
+                    let totalInc = 0;
+                    json.data.forEach(item => {
+                        const iconData = getIncomeIcon(item.name);
+                        const tagHtml = getPersonTag(item.name);
+                        const amt = parseFloat(item.amount) || 0;
+                        totalInc += amt;
+                        html += `<div class="category-row">
+                            <div class="category-left">
+                                <div class="category-icon-box" style="background:${iconData.bg}; color:${iconData.color};">${iconData.icon}</div>
+                                <div class="category-text-wrap">
+                                    <span class="category-name">${item.name}</span>
+                                    ${tagHtml}
+                                </div>
+                            </div>
+                            <div class="category-input-wrap">
+                                <input type="number" id="inc_${item.row}" class="category-input" value="${item.amount}" placeholder="0" inputmode="numeric" oninput="calculateIncomeTotal()">
+                                <span class="currency-symbol">₽</span>
+                            </div>
+                        </div>`;
+                    });
+                    document.getElementById('incomeContainer').innerHTML = html;
+                    window.currentIncomeData = json.data;
+                    document.getElementById('incomeTotal').innerText = totalInc.toLocaleString('ru-RU');
+                } else {
+                    document.getElementById('incomeContainer').innerHTML = '<div style="text-align:center; color:var(--text-red); padding:20px;">Ошибка: ' + json.message + '</div>';
+                }
+            } catch (e) {
+                document.getElementById('incomeContainer').innerHTML = '<div style="text-align:center; color:var(--text-red); padding:20px;">Ошибка сети</div>';
+            }
+        }
+
+        function changeIncomeMonth(delta) {
+            if (!currentIncomeMonth) return;
+            haptic('light');
+            let mName = currentIncomeMonth.split(' ')[0];
+            let mIdx = monthsRu.indexOf(mName);
+            let newIdx = mIdx + delta;
+            if (newIdx >= 0 && newIdx <= 11) {
+                openIncome(`${monthsRu[newIdx]} ${currentYear}`);
+            }
+        }
+
+        async function saveIncome() {
+            if (!window.currentIncomeData) return;
+            haptic('medium');
+            const btn = document.querySelector('#page-income-form .save-btn');
+            btn.innerText = "⏳ Сохранение...";
+            const items = [];
+            window.currentIncomeData.forEach(item => {
+                items.push({ row: item.row, amount: document.getElementById('inc_' + item.row).value });
+            });
+            try {
+                const res = await fetch('/api/income', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ month_str: currentIncomeMonth, items: items })
+                });
+                const resJson = await res.json();
+                if (resJson.status === 'ok') {
+                    showToast('Доходы успешно сохранены!');
+                    loadMainSummary();
+                } else {
+                    showToast(resJson.message || 'Ошибка сохранения', true);
+                }
+            } catch (e) {
+                showToast('Ошибка сети при сохранении', true);
+            } finally {
+                btn.innerText = "💾 Сохранить доходы";
+            }
+        }
+
+        // ================= РАСХОДЫ (ДЕНЬ) =================
+        let currentMonthData = {};
+        let currentNumDays = 31;
+        let selectedDay = 1;
+        let selectedMonthIndex = 0;
+        let selectedYear = 2026;
+
+        async function openExpenseMonth(monthIndex, year) {
+            haptic('medium');
+            selectedMonthIndex = monthIndex;
+            selectedYear = year;
+
+            // АВТОПЕРЕХОД НА СЕГОДНЯШНЕЕ ЧИСЛО
+            const today = new Date();
+            if (year === today.getFullYear() && monthIndex === today.getMonth()) {
+                selectedDay = today.getDate();
+            } else {
+                selectedDay = 1;
+            }
+
+            showPage('page-expense-daily');
+            document.getElementById('formContainer').innerHTML = '<div style="text-align:center; padding: 20px; color:var(--text-muted);">Загрузка...</div>';
+            document.getElementById('dateDisplay').innerText = 'Загрузка...';
+            document.getElementById('weekdayDisplay').innerText = '';
+            document.getElementById('dailyTotal').innerText = '0';
+            document.getElementById('btnPrev').disabled = true;
+            document.getElementById('btnNext').disabled = true;
+
+            try {
+                const response = await fetch(`/api/expenses/month?month_str=${monthsRu[monthIndex]} ${year}`);
+                const json = await response.json();
+                if (json.status === "ok") {
+                    currentMonthData = json.data;
+                    currentNumDays = json.num_days;
+                    renderForm();
+                    updateExpenseUI();
+                } else {
+                    document.getElementById('formContainer').innerHTML = '<div style="text-align:center; color:var(--text-red); padding:20px;">Ошибка: ' + json.message + '</div>';
+                }
+            } catch (e) {
+                document.getElementById('formContainer').innerHTML = '<div style="text-align:center; color:var(--text-red); padding:20px;">Ошибка сети</div>';
+            }
+        }
+
+        function goToToday() {
+            haptic('medium');
+            const today = new Date();
+            if (selectedYear === today.getFullYear() && selectedMonthIndex === today.getMonth()) {
+                selectedDay = today.getDate();
+                updateExpenseUI();
+            } else {
+                openExpenseMonth(today.getMonth(), today.getFullYear());
+            }
+        }
+
+        function renderForm() {
+            const container = document.getElementById('formContainer');
+            container.innerHTML = '';
+            for (let key in categories) {
+                const cat = categories[key];
+                container.innerHTML += `<div class="category-row">
+                    <div class="category-left">
+                        <div class="category-icon-box" style="background: ${cat.bg}; color: ${cat.color};">${cat.icon}</div>
+                        <span class="category-name">${cat.name}</span>
+                    </div>
+                    <div class="category-input-wrap">
+                        <input type="number" id="cat_${key}" class="category-input" placeholder="0" inputmode="numeric" oninput="onInputChanged()">
+                        <span class="currency-symbol">₽</span>
+                    </div>
+                </div>`;
+            }
+        }
+
+        function onInputChanged() {
+            if (!currentMonthData[selectedDay]) currentMonthData[selectedDay] = {};
+            let total = 0;
+            for (let key in categories) {
+                let el = document.getElementById('cat_' + key);
+                if (el) {
+                    currentMonthData[selectedDay][key] = el.value;
+                    if (el.value) total += parseFloat(el.value) || 0;
+                }
+            }
+            document.getElementById('dailyTotal').innerText = total.toLocaleString('ru-RU');
+        }
+
+        function changeDay(delta) {
+            let newDay = selectedDay + delta;
+            if (newDay >= 1 && newDay <= currentNumDays) {
+                haptic('light');
+                selectedDay = newDay;
+                updateExpenseUI();
+            }
+        }
+
+        function updateExpenseUI() {
+            const dt = new Date(selectedYear, selectedMonthIndex, selectedDay);
+            const dateStr = dt.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+            const weekdayStr = dt.toLocaleDateString('ru-RU', { weekday: 'long' });
+
+            const today = new Date();
+            const isToday = (selectedYear === today.getFullYear() && selectedMonthIndex === today.getMonth() && selectedDay === today.getDate());
+
+            document.getElementById('dateDisplay').innerText = dateStr;
+            document.getElementById('weekdayDisplay').innerText = isToday ? `Сегодня, ${weekdayStr}` : weekdayStr;
+
+            const todayBtn = document.getElementById('btnToday');
+            if (todayBtn) {
+                if (isToday) {
+                    todayBtn.style.opacity = '0.5';
+                    todayBtn.disabled = true;
+                    todayBtn.innerText = '✓ Сегодня';
+                } else {
+                    todayBtn.style.opacity = '1';
+                    todayBtn.disabled = false;
+                    todayBtn.innerText = '📅 Сегодня';
+                }
+            }
+
+            let dayData = currentMonthData[selectedDay] || {};
+            let total = 0;
+            for (let key in categories) {
+                let input = document.getElementById('cat_' + key);
+                if (input) {
+                    input.value = dayData[key] || '';
+                    if (input.value) total += parseFloat(input.value) || 0;
+                }
+            }
+            document.getElementById('dailyTotal').innerText = total.toLocaleString('ru-RU');
+            document.getElementById('btnPrev').disabled = (selectedDay === 1);
+            document.getElementById('btnNext').disabled = (selectedDay === currentNumDays);
+        }
+
+        async function saveData() {
+            haptic('medium');
+            const btn = document.querySelector('#page-expense-daily .save-btn');
+            btn.innerText = "⏳ Сохранение...";
+            const dayData = currentMonthData[selectedDay] || {};
+            try {
+                const response = await fetch('/api/day', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        date: `${selectedYear}-${String(selectedMonthIndex + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`,
+                        data: dayData
+                    })
+                });
+                const resJson = await response.json();
+                if (resJson.status === "ok") {
+                    showToast("День успешно сохранен!");
+                    loadMainSummary();
+                } else {
+                    showToast(resJson.message || "Ошибка сохранения", true);
+                }
+            } catch (e) {
+                showToast("Ошибка сети при сохранении", true);
+            } finally {
+                btn.innerText = "💾 Сохранить день";
+            }
+        }
+
+    </script>
+</body>
+
+</html>
