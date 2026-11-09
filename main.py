@@ -83,7 +83,7 @@ async def start_cmd(message: types.Message):
     ])
     await message.answer("Управление бюджетом:", reply_markup=markup)
 
-@app.get("/", response_class=HTMLResponse)
+@app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
 async def get_html():
     with open("index.html", "r", encoding="utf-8") as f:
         content = f.read()
@@ -347,8 +347,9 @@ async def save_income(request: Request):
     except Exception as e:
         return JSONResponse({"status": "error", "message": str(e)})
 
-@app.get("/health")
-async def health_check():
+@app.api_route("/ping", methods=["GET", "HEAD"])
+@app.api_route("/health", methods=["GET", "HEAD"])
+async def ping_check():
     return {"status": "ok"}
 
 @app.on_event("startup")
