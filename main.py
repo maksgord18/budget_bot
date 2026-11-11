@@ -12,8 +12,8 @@ from aiogram.filters import Command
 from aiogram.types import WebAppInfo, MenuButtonWebApp
 
 TOKEN = os.getenv("BOT_TOKEN", "8277410883:AAGgHDgwaFMDPbrsfIdCbmngMmg6Izdld70")
-WEBAPP_URL = os.getenv("WEBAPP_URL", "https://534c-185-223-171-52.ngrok-free.app") 
-SPREADSHEET_ID = os.getenv("SPREADSHEET_ID", "1x_aiXFd3Y0Mh_eHtahz2h6HnW6vx_1GhpbpFup9ljCU")
+WEBAPP_URL = os.getenv("WEBAPP_URL", "https://865f-185-223-171-52.ngrok-free.app") 
+SPREADSHEET_ID = os.getenv("SPREADSHEET_ID", "1PfdAFGpRrIc_LWsmK88A-AWHs8-zpXMz_t2kxGDLpfA")
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
@@ -38,7 +38,7 @@ CATEGORY_MAPPING = {
     "хозтовары": "хозтовары, уют",
     "связь": "связь и интернет",
     "одежда": "одежда, обувь и аксессуары",
-    "зоотовары": "зоотовары",
+    "тренировки": "тренировки",
     "репетитор": "репетитор",
     "здоровье": "здоровье и личная гигиена (+линзы)",
     "уход": "уход за собой (крема, шампуни и т.д.)",
@@ -47,7 +47,8 @@ CATEGORY_MAPPING = {
     "вклады": "вклады и накопительные счета",
     "учеба": "учеба (печать, канцтовары и т.д.)",
     "билеты": "билеты",
-    "квартира": "квартира"
+    "квартира": "квартира",
+    "зоотовары": "зоотовары"
 }
 
 # ЖЕСТКО ЗАДАННЫЙ СПИСОК ДОХОДОВ
@@ -64,10 +65,84 @@ INCOME_SOURCES = [
     "стипендия Максим"
 ]
 
-def get_sheet_name(dt: datetime):
+def find_worksheet(sh, dt_or_str):
+    titles = {ws.title.lower(): ws for ws in sh.worksheets()}
     months = ["январь", "февраль", "март", "апрель", "май", "июнь", 
               "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"]
-    return f"{months[dt.month - 1]} {dt.year}"
+
+    if isinstance(dt_or_str, datetime):
+        m_idx = dt_or_str.month
+        year = dt_or_str.year
+    else:
+        s = str(dt_or_str).strip().lower()
+        if s in titles:
+            return titles[s]
+        m_idx = None
+        year = None
+        for i, m in enumerate(months, start=1):
+            if m in s:
+                m_idx = i
+                break
+        parts = s.replace('.', ' ').replace('/', ' ').replace('-', ' ').split()
+        for p in parts:
+            if p.isdigit() and len(p) == 4:
+                year = int(p)
+            elif p.isdigit() and 1 <= int(p) <= 12 and m_idx is None:
+                m_idx = int(p)
+
+        if not m_idx:
+            m_idx = datetime.now().month
+        if not year:
+            year = datetime.now().year
+
+    candidates = [
+        f"{m_idx:02d}.{year}".lower(),
+        f"{m_idx}.{year}".lower(),
+        f"{months[m_idx - 1]} {year}".lower()
+    ]
+    for c in candidates:
+        if c in titles:
+            return titles[c]
+
+    for title, ws in titles.items():
+        if f"{m_idx:02d}.{year}" in title or (str(year) in title and months[m_idx - 1] in title):
+            return ws
+
+    worksheets = sh.worksheets()
+    if worksheets:
+        return worksheets[0]
+    raise gspread.WorksheetNotFound(f"Лист для '{dt_or_str}' не найден")
+
+def clean_val(raw_val):
+    if raw_val is None:
+        return ""
+    clean_str = str(raw_val).replace('₽', '').replace(' ', '').replace('\xa0', '').replace(',', '.')
+    if clean_str:
+        try:
+            f_val = float(clean_str)
+            return str(int(f_val)) if f_val.is_integer() else clean_str
+        except ValueError:
+            return clean_str
+    return ""
+
+def get_category_rows(all_values):
+    has_levels = len(all_values) > 0 and len(all_values[0]) > 1 and 'уровень' in all_values[0][1].strip().lower()
+    cat_rows = {}
+    for k, sheet_cat in CATEGORY_MAPPING.items():
+        target = sheet_cat.strip().lower().replace('ё', 'е')
+        for i, r in enumerate(all_values[:55]):
+            if not r or not r[0]: continue
+            c0 = r[0].strip().lower().replace('ё', 'е')
+            if c0 == target:
+                if has_levels:
+                    cat_rows[k] = {'total': i + 1, 'maxim': i + 2, 'yasya': i + 3}
+                else:
+                    cat_rows[k] = {'total': i + 1, 'maxim': i + 1, 'yasya': i + 1}
+                break
+    return cat_rows, has_levels
+
+def get_sheet_name(dt: datetime):
+    return f"{dt.month:02d}.{dt.year}"
 
 @dp.message(Command("start"))
 async def start_cmd(message: types.Message):
@@ -94,61 +169,113 @@ async def get_html():
 
 # ================= РАСХОДЫ (МАССОВАЯ ЗАГРУЗКА МЕСЯЦА) =================
 @app.get("/api/expenses/month")
-async def get_expenses_month(month_str: str):
+async def get_expenses_month(month_str: str, user: str = "all"):
     try:
-        months = ["январь", "февраль", "март", "апрель", "май", "июнь", 
-                  "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"]
-        m_name, y_str = month_str.split()
-        m_idx = months.index(m_name) + 1
-        y = int(y_str)
-        _, num_days = calendar.monthrange(y, m_idx)
-        
         try:
-            worksheet = sh.worksheet(month_str)
+            worksheet = find_worksheet(sh, month_str)
         except gspread.WorksheetNotFound:
-            return JSONResponse({"status": "ok", "data": {str(d): {} for d in range(1, num_days + 1)}, "num_days": num_days})
+            return JSONResponse({
+                "status": "ok",
+                "data": {},
+                "data_maxim": {},
+                "data_yasya": {},
+                "data_total": {},
+                "totals_by_day": {"maxim": {}, "yasya": {}, "total": {}},
+                "month_summary": {"maxim_total": 0, "yasya_total": 0, "all_total": 0},
+                "num_days": 30
+            })
 
         all_values = worksheet.get_all_values()
-        data = {str(d): {} for d in range(1, num_days + 1)}
-        
-        in_expenses = False
-        for row in all_values:
-            if not row or not row[0]: continue
-            c_name = row[0].strip().lower().replace('ё', 'е')
-            
-            # Определяем начало блока Расходов
-            if "расходы" in c_name and len(c_name) < 15:
-                in_expenses = True
-                continue
-            # Конец блока ежедневных расходов
-            if in_expenses and "итого" in c_name:
-                break
-            if not in_expenses:
-                continue
-            
-            matched_key = None
-            for k, v in CATEGORY_MAPPING.items():
-                if v.strip().lower().replace('ё', 'е') == c_name:
-                    matched_key = k
+        cat_rows, has_levels = get_category_rows(all_values)
+        day_offset = 2 if has_levels else 1
+
+        num_days = 0
+        if all_values and len(all_values) > 0:
+            for c in all_values[0][day_offset:]:
+                if 'итого' in c.lower():
                     break
-            
-            if matched_key:
-                for d in range(1, num_days + 1):
-                    val = ""
-                    if len(row) > d:
-                        raw_val = row[d]
-                        clean_str = raw_val.replace('₽', '').replace(' ', '').replace('\xa0', '').replace(',', '.')
-                        if clean_str:
-                            try:
-                                f_val = float(clean_str)
-                                val = str(int(f_val)) if f_val.is_integer() else clean_str
-                            except ValueError:
-                                val = clean_str
-                        else:
-                            val = ""
-                    data[str(d)][matched_key] = val
-                    
-        return JSONResponse({"status": "ok", "data": data, "num_days": num_days})
+                num_days += 1
+        if num_days < 28 or num_days > 31:
+            num_days = 30
+
+        data_maxim = {str(d): {} for d in range(1, num_days + 1)}
+        data_yasya = {str(d): {} for d in range(1, num_days + 1)}
+        data_total = {str(d): {} for d in range(1, num_days + 1)}
+
+        for k, rows in cat_rows.items():
+            r_tot = rows['total'] - 1
+            r_max = rows['maxim'] - 1
+            r_yas = rows['yasya'] - 1
+
+            for d in range(1, num_days + 1):
+                col_i = d - 1 + day_offset
+                v_max = clean_val(all_values[r_max][col_i]) if r_max < len(all_values) and len(all_values[r_max]) > col_i else ""
+                v_yas = clean_val(all_values[r_yas][col_i]) if r_yas < len(all_values) and len(all_values[r_yas]) > col_i else ""
+                v_tot = clean_val(all_values[r_tot][col_i]) if r_tot < len(all_values) and len(all_values[r_tot]) > col_i else ""
+
+                if not v_tot and (v_max or v_yas):
+                    try:
+                        tot_f = (float(v_max) if v_max else 0) + (float(v_yas) if v_yas else 0)
+                        v_tot = str(int(tot_f)) if tot_f.is_integer() else str(round(tot_f, 2))
+                    except ValueError:
+                        pass
+
+                data_maxim[str(d)][k] = v_max
+                data_yasya[str(d)][k] = v_yas
+                data_total[str(d)][k] = v_tot
+
+        totals_by_day = {"maxim": {}, "yasya": {}, "total": {}}
+        for d in range(1, num_days + 1):
+            col_i = d - 1 + day_offset
+            t_max = clean_val(all_values[52][col_i]) if len(all_values) > 52 and len(all_values[52]) > col_i else ""
+            t_yas = clean_val(all_values[53][col_i]) if len(all_values) > 53 and len(all_values[53]) > col_i else ""
+            t_all = clean_val(all_values[54][col_i]) if len(all_values) > 54 and len(all_values[54]) > col_i else ""
+
+            if not t_max:
+                sum_m = sum(float(data_maxim[str(d)][k]) for k in data_maxim[str(d)] if data_maxim[str(d)][k])
+                t_max = str(int(sum_m)) if sum_m.is_integer() else str(round(sum_m, 2))
+            if not t_yas:
+                sum_y = sum(float(data_yasya[str(d)][k]) for k in data_yasya[str(d)] if data_yasya[str(d)][k])
+                t_yas = str(int(sum_y)) if sum_y.is_integer() else str(round(sum_y, 2))
+            if not t_all:
+                try:
+                    tot_s = (float(t_max) if t_max else 0) + (float(t_yas) if t_yas else 0)
+                    t_all = str(int(tot_s)) if tot_s.is_integer() else str(round(tot_s, 2))
+                except ValueError:
+                    pass
+
+            totals_by_day["maxim"][str(d)] = t_max
+            totals_by_day["yasya"][str(d)] = t_yas
+            totals_by_day["total"][str(d)] = t_all
+
+        max_month = sum(float(totals_by_day["maxim"][str(d)]) for d in range(1, num_days + 1) if totals_by_day["maxim"][str(d)])
+        yas_month = sum(float(totals_by_day["yasya"][str(d)]) for d in range(1, num_days + 1) if totals_by_day["yasya"][str(d)])
+        all_month = max_month + yas_month
+
+        month_summary = {
+            "maxim_total": int(max_month) if max_month.is_integer() else round(max_month, 2),
+            "yasya_total": int(yas_month) if yas_month.is_integer() else round(yas_month, 2),
+            "all_total": int(all_month) if all_month.is_integer() else round(all_month, 2)
+        }
+
+        user_req = str(user).lower()
+        if user_req == "maxim":
+            selected_data = data_maxim
+        elif user_req == "yasya":
+            selected_data = data_yasya
+        else:
+            selected_data = data_total
+
+        return JSONResponse({
+            "status": "ok",
+            "data": selected_data,
+            "data_maxim": data_maxim,
+            "data_yasya": data_yasya,
+            "data_total": data_total,
+            "totals_by_day": totals_by_day,
+            "month_summary": month_summary,
+            "num_days": num_days
+        })
     except Exception as e:
         return JSONResponse({"status": "error", "message": str(e)})
 
@@ -158,48 +285,27 @@ async def save_day(request: Request):
         payload = await request.json()
         dt = datetime.strptime(payload.get("date"), "%Y-%m-%d")
         data = payload.get("data", {})
-        
-        sheet_name = get_sheet_name(dt)
-        try:
-            worksheet = sh.worksheet(sheet_name)
-        except gspread.WorksheetNotFound:
-            return JSONResponse({"status": "error", "message": f"Лист '{sheet_name}' не найден в таблице!"})
-            
-        col_idx = dt.day + 1
-        col1 = [c.strip().lower().replace('ё', 'е') for c in worksheet.col_values(1)]
-        
-        # Находим диапазон строк блока расходов
-        start_idx = 0
-        end_idx = len(col1)
-        for i, val in enumerate(col1):
-            if "расходы" in val and len(val) < 15:
-                start_idx = i
-                break
-        for i in range(start_idx + 1, len(col1)):
-            if "итого" in col1[i]:
-                end_idx = i
-                break
+        user = str(payload.get("user", "maxim")).lower()
+
+        worksheet = find_worksheet(sh, dt)
+        all_values = worksheet.get_all_values()
+        cat_rows, has_levels = get_category_rows(all_values)
+        day_offset = 2 if has_levels else 1
+        col_idx = dt.day + day_offset
 
         cells_to_update = []
         for key, val in data.items():
-            sheet_cat = CATEGORY_MAPPING.get(key)
-            if sheet_cat:
-                target_clean = sheet_cat.strip().lower().replace('ё', 'е')
-                target_row = None
-                for r in range(start_idx, end_idx):
-                    if col1[r] == target_clean:
-                        target_row = r + 1
-                        break
-                if not target_row and target_clean in col1:
-                    target_row = col1.index(target_clean) + 1
-                    
-                if target_row:
-                    val_to_write = float(val) if val != "" else ""
-                    cells_to_update.append(gspread.Cell(row=target_row, col=col_idx, value=val_to_write))
-                
+            if key in cat_rows:
+                if has_levels:
+                    target_row = cat_rows[key]['yasya'] if user == 'yasya' else cat_rows[key]['maxim']
+                else:
+                    target_row = cat_rows[key]['total']
+                val_to_write = float(str(val).replace(',', '.')) if str(val).strip() != "" else ""
+                cells_to_update.append(gspread.Cell(row=target_row, col=col_idx, value=val_to_write))
+
         if cells_to_update:
             worksheet.update_cells(cells_to_update)
-            
+
         return JSONResponse({"status": "ok"})
     except Exception as e:
         return JSONResponse({"status": "error", "message": str(e)})
@@ -213,52 +319,32 @@ async def quick_expense(request: Request):
             dt = datetime.strptime(date_str, "%Y-%m-%d")
         else:
             dt = datetime.now()
-            
+
+        user = str(payload.get("user", "maxim")).lower()
         key = payload.get("category")
         try:
             amount = float(str(payload.get("amount", "")).replace(',', '.'))
         except (ValueError, TypeError):
             amount = 0.0
-            
+
         if amount <= 0:
             return JSONResponse({"status": "error", "message": "Введите сумму больше 0"})
-            
-        sheet_cat = CATEGORY_MAPPING.get(key)
-        if not sheet_cat:
-            return JSONResponse({"status": "error", "message": f"Категория '{key}' не найдена"})
-            
-        sheet_name = get_sheet_name(dt)
-        try:
-            worksheet = sh.worksheet(sheet_name)
-        except gspread.WorksheetNotFound:
-            return JSONResponse({"status": "error", "message": f"Лист '{sheet_name}' не найден в таблице!"})
-            
-        col_idx = dt.day + 1
-        col1 = [c.strip().lower().replace('ё', 'е') for c in worksheet.col_values(1)]
-        
-        start_idx = 0
-        end_idx = len(col1)
-        for i, val in enumerate(col1):
-            if "расходы" in val and len(val) < 15:
-                start_idx = i
-                break
-        for i in range(start_idx + 1, len(col1)):
-            if "итого" in col1[i]:
-                end_idx = i
-                break
 
-        target_clean = sheet_cat.strip().lower().replace('ё', 'е')
-        target_row = None
-        for r in range(start_idx, end_idx):
-            if col1[r] == target_clean:
-                target_row = r + 1
-                break
-        if not target_row and target_clean in col1:
-            target_row = col1.index(target_clean) + 1
-            
-        if not target_row:
-            return JSONResponse({"status": "error", "message": "Строка категории не найдена в таблице"})
-            
+        worksheet = find_worksheet(sh, dt)
+        all_values = worksheet.get_all_values()
+        cat_rows, has_levels = get_category_rows(all_values)
+
+        if key not in cat_rows:
+            return JSONResponse({"status": "error", "message": f"Категория '{key}' не найдена"})
+
+        day_offset = 2 if has_levels else 1
+        col_idx = dt.day + day_offset
+
+        if has_levels:
+            target_row = cat_rows[key]['yasya'] if user == 'yasya' else cat_rows[key]['maxim']
+        else:
+            target_row = cat_rows[key]['total']
+
         cell_raw = worksheet.cell(target_row, col_idx).value or ""
         clean_str = str(cell_raw).replace('₽', '').replace(' ', '').replace('\xa0', '').replace(',', '.')
         existing_val = 0.0
@@ -267,13 +353,14 @@ async def quick_expense(request: Request):
                 existing_val = float(clean_str)
             except ValueError:
                 existing_val = 0.0
-                
+
         new_val = existing_val + amount
         val_to_write = int(new_val) if new_val.is_integer() else round(new_val, 2)
         worksheet.update_cell(target_row, col_idx, val_to_write)
-        
+
         return JSONResponse({
             "status": "ok",
+            "user": user,
             "category": key,
             "added": amount,
             "previous": existing_val,
@@ -283,44 +370,53 @@ async def quick_expense(request: Request):
     except Exception as e:
         return JSONResponse({"status": "error", "message": str(e)})
 
-# ================= ДОХОДЫ (ОБНОВЛЕННАЯ ЛОГИКА ФИЛЬТРАЦИИ) =================
+# ================= ДОХОДЫ =================
 @app.get("/api/income")
 async def get_income(month: str):
     try:
-        try:
-            worksheet = sh.worksheet(month)
-        except gspread.WorksheetNotFound:
-            return JSONResponse({"status": "error", "message": f"Лист '{month}' не найден!"})
-        
-        # Получаем данные первых трех колонок
-        col1 = worksheet.col_values(1)
-        col2 = worksheet.col_values(2) if worksheet.col_count >= 2 else []
-        col3 = worksheet.col_values(3) if worksheet.col_count >= 3 else []
-        
+        worksheet = find_worksheet(sh, month)
+        vals = worksheet.get_all_values()
         income_data = []
-        
-        # Ищем в таблице ТОЛЬКО те пункты, которые есть в INCOME_SOURCES
-        for source in INCOME_SOURCES:
-            if source in col1:
-                row_idx = col1.index(source)
-                
-                date_val = col2[row_idx] if row_idx < len(col2) else ""
-                amount_val = col3[row_idx] if row_idx < len(col3) else ""
-                clean_amt = amount_val.replace('₽', '').replace(' ', '').replace('\xa0', '').replace(',', '.')
-                if clean_amt:
-                    try:
-                        f_amt = float(clean_amt)
-                        clean_amt = str(int(f_amt)) if f_amt.is_integer() else clean_amt
-                    except ValueError:
-                        pass
-                
-                income_data.append({
-                    "row": row_idx + 1, 
-                    "name": source, 
-                    "date": date_val, 
-                    "amount": clean_amt
-                })
-            
+
+        has_new_income = False
+        for idx in range(min(55, len(vals)), min(75, len(vals))):
+            r = vals[idx]
+            if len(r) > 2 and 'доходы' in r[2].lower():
+                has_new_income = True
+                break
+
+        if has_new_income:
+            for idx, r in enumerate(vals):
+                if len(r) > 2:
+                    c2 = r[2].strip()
+                    if c2 in ['Максим', 'Яся'] and idx < 62:
+                        u = 'maxim' if c2 == 'Максим' else 'yasya'
+                        amt = clean_val(r[3] if len(r) > 3 else '')
+                        income_data.append({"row": idx + 1, "col": 4, "name": f"Остаток {c2}", "date": "остаток", "amount": amt, "user": u})
+                    elif c2 and idx >= 64 and idx <= 71:
+                        if 'итого' in c2.lower():
+                            continue
+                        u = 'maxim' if 'максим' in c2.lower() else ('yasya' if 'яся' in c2.lower() else 'all')
+                        amt = clean_val(r[4] if len(r) > 4 else '')
+                        income_data.append({"row": idx + 1, "col": 5, "name": c2, "date": r[3] if len(r) > 3 else '', "amount": amt, "user": u})
+        else:
+            col1 = worksheet.col_values(1)
+            col2 = worksheet.col_values(2) if worksheet.col_count >= 2 else []
+            col3 = worksheet.col_values(3) if worksheet.col_count >= 3 else []
+            for source in INCOME_SOURCES:
+                if source in col1:
+                    row_idx = col1.index(source)
+                    amt = clean_val(col3[row_idx] if row_idx < len(col3) else '')
+                    u = 'maxim' if 'максим' in source.lower() else ('yasya' if 'яся' in source.lower() else 'all')
+                    income_data.append({
+                        "row": row_idx + 1,
+                        "col": 3,
+                        "name": source,
+                        "date": col2[row_idx] if row_idx < len(col2) else '',
+                        "amount": amt,
+                        "user": u
+                    })
+
         return JSONResponse({"status": "ok", "data": income_data})
     except Exception as e:
         return JSONResponse({"status": "error", "message": str(e)})
@@ -331,18 +427,19 @@ async def save_income(request: Request):
         payload = await request.json()
         month_str = payload.get("month_str")
         items = payload.get("items", [])
-        
-        worksheet = sh.worksheet(month_str)
+
+        worksheet = find_worksheet(sh, month_str)
         cells_to_update = []
-        
         for item in items:
             row = int(item["row"])
-            val = float(item["amount"]) if str(item["amount"]) != "" else ""
-            cells_to_update.append(gspread.Cell(row=row, col=3, value=val))
-            
+            col = int(item.get("col", 5 if row >= 65 else (4 if row >= 58 else 3)))
+            raw_amt = str(item.get("amount", "")).replace(',', '.').strip()
+            val = float(raw_amt) if raw_amt != "" else ""
+            cells_to_update.append(gspread.Cell(row=row, col=col, value=val))
+
         if cells_to_update:
             worksheet.update_cells(cells_to_update)
-            
+
         return JSONResponse({"status": "ok"})
     except Exception as e:
         return JSONResponse({"status": "error", "message": str(e)})

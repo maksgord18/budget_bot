@@ -39,6 +39,35 @@
             --top-safe: max(115px, calc(env(safe-area-inset-top, 54px) + 56px));
             --bottom-nav-height: 64px;
             --bottom-safe: max(90px, calc(env(safe-area-inset-bottom, 20px) + var(--bottom-nav-height) + 14px));
+
+            /* Цвета текущей темы пользователя (Максим по умолчанию) */
+            --user-primary: #1565C0;
+            --user-primary-rgb: 21, 101, 192;
+            --user-pastel: #E3F2FD;
+            --user-border: rgba(21, 101, 192, 0.18);
+            --user-btn-bg: #1565C0;
+            --user-btn-active: #0D47A1;
+            --user-accent-shadow: rgba(21, 101, 192, 0.25);
+        }
+
+        body.theme-maxim {
+            --user-primary: #1565C0;
+            --user-primary-rgb: 21, 101, 192;
+            --user-pastel: #E3F2FD;
+            --user-border: rgba(21, 101, 192, 0.18);
+            --user-btn-bg: #1565C0;
+            --user-btn-active: #0D47A1;
+            --user-accent-shadow: rgba(21, 101, 192, 0.25);
+        }
+
+        body.theme-yasya {
+            --user-primary: #D81B60;
+            --user-primary-rgb: 216, 27, 96;
+            --user-pastel: #FCE4EC;
+            --user-border: rgba(216, 27, 96, 0.18);
+            --user-btn-bg: #D81B60;
+            --user-btn-active: #AD1457;
+            --user-accent-shadow: rgba(216, 27, 96, 0.25);
         }
 
         * {
@@ -190,6 +219,53 @@
             color: var(--text-blue);
         }
 
+        /* ТУМБЛЕР МАКСИМ / ЯСЯ */
+        .user-toggle-container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            margin-bottom: 12px;
+        }
+
+        .user-toggle-track {
+            display: flex;
+            background: #EBEBEF;
+            padding: 3px;
+            border-radius: 14px;
+            width: 100%;
+            max-width: 320px;
+            box-sizing: border-box;
+            gap: 2px;
+        }
+
+        .user-toggle-item {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 9px 16px;
+            border: none;
+            background: transparent;
+            border-radius: 11px;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: inherit;
+        }
+
+        .user-toggle-item.active {
+            background: var(--user-btn-bg);
+            color: #FFFFFF;
+            box-shadow: 0 3px 10px var(--user-accent-shadow);
+        }
+
+        .user-toggle-avatar {
+            font-size: 16px;
+        }
+
         /* КАРТОЧКА БЫСТРОГО ВВОДА */
         .quick-expense-card {
             background: var(--card-bg);
@@ -200,6 +276,7 @@
             display: flex;
             flex-direction: column;
             gap: 12px;
+            transition: border-color 0.25s ease;
         }
 
         .quick-card-header {
@@ -217,13 +294,28 @@
             gap: 6px;
         }
 
+        .quick-card-user-badge {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--user-primary);
+            background: var(--user-pastel);
+            border: 1px solid var(--user-border);
+            padding: 3px 8px;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.25s ease;
+        }
+
         .quick-card-date {
             font-size: 12px;
             font-weight: 600;
-            color: var(--text-blue);
-            background: var(--pastel-blue);
+            color: var(--user-primary);
+            background: var(--user-pastel);
             padding: 4px 10px;
             border-radius: 12px;
+            transition: all 0.25s ease;
         }
 
         .quick-input-row {
@@ -261,9 +353,9 @@
         }
 
         .quick-category-select:focus {
-            border-color: var(--text-blue);
+            border-color: var(--user-primary);
             background-color: #FFFFFF;
-            box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.12);
+            box-shadow: 0 0 0 3px rgba(var(--user-primary-rgb), 0.12);
         }
 
         .quick-select-arrow {
@@ -300,9 +392,9 @@
         }
 
         .quick-amount-input:focus {
-            border-color: var(--text-blue);
+            border-color: var(--user-primary);
             background-color: #FFFFFF;
-            box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.12);
+            box-shadow: 0 0 0 3px rgba(var(--user-primary-rgb), 0.12);
         }
 
         .quick-currency {
@@ -329,7 +421,7 @@
 
         .quick-submit-btn {
             width: 100%;
-            background: #2E7D32;
+            background: var(--user-btn-bg);
             color: #FFFFFF;
             border: none;
             padding: 14px;
@@ -337,17 +429,17 @@
             font-size: 15px;
             font-weight: 700;
             cursor: pointer;
-            box-shadow: 0 4px 12px rgba(46, 125, 50, 0.22);
+            box-shadow: 0 4px 12px var(--user-accent-shadow);
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            transition: transform 0.1s, background-color 0.15s, opacity 0.15s;
+            transition: transform 0.1s, background-color 0.25s, box-shadow 0.25s, opacity 0.15s;
         }
 
         .quick-submit-btn:active {
             transform: scale(0.98);
-            background: #1B5E20;
+            background: var(--user-btn-active);
         }
 
         .quick-submit-btn:disabled {
@@ -654,9 +746,9 @@
         }
 
         .category-input:focus {
-            border-color: var(--text-blue);
+            border-color: var(--user-primary);
             background-color: #FFFFFF;
-            box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.12);
+            box-shadow: 0 0 0 3px rgba(var(--user-primary-rgb), 0.12);
         }
 
         .currency-symbol {
@@ -699,7 +791,7 @@
 
         /* КНОПКА СОХРАНИТЬ */
         .save-btn {
-            background: linear-gradient(135deg, #1976D2, #1565C0);
+            background: var(--user-btn-bg);
             color: #ffffff;
             border: none;
             padding: 16px;
@@ -709,17 +801,17 @@
             cursor: pointer;
             margin-top: 8px;
             width: 100%;
-            box-shadow: 0 4px 16px rgba(21, 101, 192, 0.25);
+            box-shadow: 0 4px 16px var(--user-accent-shadow);
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            transition: transform 0.12s, box-shadow 0.12s;
+            transition: transform 0.12s, box-shadow 0.12s, background-color 0.22s;
         }
 
         .save-btn:active {
             transform: scale(0.98);
-            box-shadow: 0 2px 8px rgba(21, 101, 192, 0.2);
+            background: var(--user-btn-active);
         }
 
         /* СОВРЕМЕННЫЙ НИЖНИЙ НАВИГАЦИОННЫЙ БАР */
@@ -769,7 +861,7 @@
         }
 
         .nav-item.active {
-            color: var(--text-blue);
+            color: var(--user-primary);
         }
 
         .nav-item.active .nav-icon {
@@ -777,7 +869,7 @@
         }
 
         .nav-item.active .nav-label {
-            color: var(--text-blue);
+            color: var(--user-primary);
             font-weight: 700;
         }
 
@@ -822,6 +914,21 @@
         <!-- ЭКРАН 1: ГЛАВНОЕ МЕНЮ -->
         <div id="page-menu" class="page active">
             <h2>Бюджет</h2>
+
+            <!-- ТУМБЛЕР МАКСИМ / ЯСЯ -->
+            <div class="user-toggle-container">
+                <div class="user-toggle-track">
+                    <button type="button" id="mainToggleMaxim" class="user-toggle-item active" onclick="switchUser('maxim')">
+                        <span class="user-toggle-avatar">👨🏻‍💻</span>
+                        <span>Максим</span>
+                    </button>
+                    <button type="button" id="mainToggleYasya" class="user-toggle-item" onclick="switchUser('yasya')">
+                        <span class="user-toggle-avatar">👩🏼‍🦰</span>
+                        <span>Яся</span>
+                    </button>
+                </div>
+            </div>
+
             <div class="summary-card">
                 <div class="summary-title" id="mainMonthTitle">Загрузка...</div>
                 <div class="summary-grid">
@@ -838,11 +945,13 @@
                         <div class="summary-val" id="mainBal">...</div>
                     </div>
                 </div>
+                <div id="userMonthSubtext" style="text-align:center; font-size:12px; color:var(--text-muted); margin-top:10px; font-weight:600;"></div>
             </div>
             <!-- БЫСТРЫЙ ВВОД РАСХОДА -->
             <div class="quick-expense-card">
                 <div class="quick-card-header">
                     <span class="quick-card-title">⚡ Быстрый расход</span>
+                    <span class="quick-card-user-badge" id="quickUserBadge">👨🏻‍💻 Максим</span>
                     <span class="quick-card-date" id="quickExpenseDate">Сегодня</span>
                 </div>
 
@@ -910,9 +1019,24 @@
                 </div>
                 <button id="btnNext" onclick="changeDay(1)">›</button>
             </div>
+
+            <!-- ТУМБЛЕР МАКСИМ / ЯСЯ НА СТРАНИЦЕ ДНЯ -->
+            <div class="user-toggle-container" style="margin-top: 4px; margin-bottom: 6px;">
+                <div class="user-toggle-track">
+                    <button type="button" id="dailyToggleMaxim" class="user-toggle-item active" onclick="switchUser('maxim')">
+                        <span class="user-toggle-avatar">👨🏻‍💻</span>
+                        <span>Максим</span>
+                    </button>
+                    <button type="button" id="dailyToggleYasya" class="user-toggle-item" onclick="switchUser('yasya')">
+                        <span class="user-toggle-avatar">👩🏼‍🦰</span>
+                        <span>Яся</span>
+                    </button>
+                </div>
+            </div>
+
             <div id="formContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
             <div class="daily-total-card">
-                <span class="daily-total-label">Итого за день</span>
+                <span class="daily-total-label" id="dailyTotalLabel">Итого за день (Максим)</span>
                 <span class="daily-total-val"><span id="dailyTotal">0</span> ₽</span>
             </div>
             <button class="save-btn" onclick="saveData()">💾 Сохранить день</button>
@@ -1113,7 +1237,7 @@
             }
         }
 
-        // КАТЕГОРИИ С ИКОНКАМИ И ЦВЕТАМИ
+        // КАТЕГОРИИ С ИКОНКАМИ И ЦВЕТАМИ (17 КАТЕГОРИЙ)
         const categories = {
             "продукты": { name: "Продукты", icon: "🛒", bg: "#E8F5E9", color: "#2E7D32" },
             "обеды": { name: "Обеды", icon: "🍽", bg: "#FFF3E0", color: "#E65100" },
@@ -1121,7 +1245,7 @@
             "хозтовары": { name: "Хозтовары", icon: "🧼", bg: "#F3E5F5", color: "#7B1FA2" },
             "связь": { name: "Связь", icon: "📱", bg: "#E0F2F1", color: "#00695C" },
             "одежда": { name: "Одежда", icon: "👕", bg: "#FCE4EC", color: "#C2185B" },
-            "зоотовары": { name: "Зоотовары", icon: "🐾", bg: "#EFEBE9", color: "#4E342E" },
+            "тренировки": { name: "Тренировки", icon: "🏋️", bg: "#EDE7F6", color: "#3F51B5" },
             "репетитор": { name: "Репетитор", icon: "👨‍🏫", bg: "#EDE7F6", color: "#5E35B1" },
             "здоровье": { name: "Здоровье", icon: "💊", bg: "#FFEBEE", color: "#C62828" },
             "уход": { name: "Уход за собой", icon: "🧴", bg: "#FCE4EC", color: "#880E4F" },
@@ -1130,8 +1254,74 @@
             "вклады": { name: "Вклады и счета", icon: "🏦", bg: "#E8F5E9", color: "#1B5E20" },
             "учеба": { name: "Учёба", icon: "📚", bg: "#FFF8E1", color: "#FF8F00" },
             "билеты": { name: "Билеты", icon: "🎫", bg: "#F3E5F5", color: "#4A148C" },
-            "квартира": { name: "Квартира", icon: "🏠", bg: "#E0F7FA", color: "#006064" }
+            "квартира": { name: "Квартира", icon: "🏠", bg: "#E0F7FA", color: "#006064" },
+            "зоотовары": { name: "Зоотовары", icon: "🐾", bg: "#EFEBE9", color: "#4E342E" }
         };
+
+        // ================= ТУМБЛЕР ПОЛЬЗОВАТЕЛЯ (МАКСИМ / ЯСЯ) =================
+        let currentUser = localStorage.getItem('budget_user') || 'maxim';
+        let currentMonthDataFull = null;
+
+        function switchUser(user) {
+            haptic('selection');
+            currentUser = user;
+            try {
+                localStorage.setItem('budget_user', user);
+            } catch (e) { }
+
+            // Переключение темы оформления на body
+            document.body.className = (user === 'yasya') ? 'theme-yasya' : 'theme-maxim';
+
+            // Обновление состояния кнопок тумблера
+            ['mainToggle', 'dailyToggle'].forEach(prefix => {
+                const btnM = document.getElementById(prefix + 'Maxim');
+                const btnY = document.getElementById(prefix + 'Yasya');
+                if (btnM && btnY) {
+                    btnM.classList.toggle('active', user === 'maxim');
+                    btnY.classList.toggle('active', user === 'yasya');
+                }
+            });
+
+            // Обновление бейджа на карточке быстрого расхода
+            const badge = document.getElementById('quickUserBadge');
+            if (badge) {
+                badge.innerHTML = (user === 'yasya') ? '👩🏼‍🦰 Яся' : '👨🏻‍💻 Максим';
+            }
+
+            // Обновление заголовка итоговой суммы на странице дня
+            const dailyLabel = document.getElementById('dailyTotalLabel');
+            if (dailyLabel) {
+                dailyLabel.innerText = `Итого за день (${user === 'yasya' ? 'Яся' : 'Максим'})`;
+            }
+
+            // Обновление данных под выбранного пользователя
+            updateUserDataViews();
+        }
+
+        function updateUserDataViews() {
+            if (!currentMonthDataFull) return;
+
+            // 1. Быстрый расход: обновляем суммы за сегодня для выбранного пользователя
+            const todayDay = new Date().getDate();
+            const userMonthExp = (currentUser === 'yasya') ? (currentMonthDataFull.data_yasya || {}) : (currentMonthDataFull.data_maxim || {});
+            todayExpensesMap = userMonthExp[todayDay] || {};
+            onQuickCatChange();
+
+            // 2. Сводка за месяц: подпись с долей выбранного пользователя
+            const subtextEl = document.getElementById('userMonthSubtext');
+            if (subtextEl && currentMonthDataFull.month_summary) {
+                const ms = currentMonthDataFull.month_summary;
+                const userVal = (currentUser === 'yasya') ? ms.yasya_total : ms.maxim_total;
+                const userName = (currentUser === 'yasya') ? 'Яси' : 'Максима';
+                subtextEl.innerHTML = `Траты ${userName} за месяц: <strong>${Number(userVal).toLocaleString('ru-RU')} ₽</strong> (из ${Number(ms.all_total).toLocaleString('ru-RU')} ₽)`;
+            }
+
+            // 3. Если открыта страница ввода расходов за день - переключаем значения в полях ввода!
+            currentMonthData = userMonthExp;
+            if (document.getElementById('page-expense-daily').classList.contains('active')) {
+                updateExpenseUI();
+            }
+        }
 
         // ================= БЫСТРЫЙ ВВОД РАСХОДА =================
         let todayExpensesMap = {};
@@ -1164,9 +1354,10 @@
             const catKey = select.value;
             const hintEl = document.getElementById('quickTodayHint');
             const currentToday = parseFloat(todayExpensesMap[catKey]) || 0;
+            const userName = (currentUser === 'yasya') ? 'у Яси' : 'у Максима';
             if (currentToday > 0) {
                 const cat = categories[catKey];
-                hintEl.innerHTML = `Сегодня в «${cat ? cat.name : catKey}» уже записано: <strong>${currentToday.toLocaleString('ru-RU')} ₽</strong>`;
+                hintEl.innerHTML = `Сегодня в «${cat ? cat.name : catKey}» ${userName} записано: <strong>${currentToday.toLocaleString('ru-RU')} ₽</strong>`;
                 hintEl.style.display = 'block';
             } else {
                 hintEl.style.display = 'none';
@@ -1228,7 +1419,7 @@
                 const response = await fetch('/api/quick-expense', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ category: catKey, amount: amount })
+                    body: JSON.stringify({ category: catKey, amount: amount, user: currentUser })
                 });
                 const res = await response.json();
 
@@ -1240,12 +1431,19 @@
                     todayExpensesMap[catKey] = newTot;
 
                     const day = res.day || new Date().getDate();
+                    if (currentMonthDataFull) {
+                        const targetStore = (currentUser === 'yasya') ? currentMonthDataFull.data_yasya : currentMonthDataFull.data_maxim;
+                        if (targetStore && targetStore[day]) {
+                            targetStore[day][catKey] = String(newTot);
+                        }
+                    }
                     if (currentMonthData[day]) {
                         currentMonthData[day][catKey] = String(newTot);
                     }
 
+                    const userName = (currentUser === 'yasya') ? 'Яси' : 'Максима';
                     feedback.className = 'quick-feedback success';
-                    feedback.innerHTML = `✓ Успешно! Добавлено <strong>+${amount.toLocaleString('ru-RU')} ₽</strong> в «${catName}»<br><small>Всего за сегодня: ${Number(newTot).toLocaleString('ru-RU')} ₽</small>`;
+                    feedback.innerHTML = `✓ Записано! +<strong>${amount.toLocaleString('ru-RU')} ₽</strong> в «${catName}» (${userName})<br><small>Всего за сегодня у ${userName}: ${Number(newTot).toLocaleString('ru-RU')} ₽</small>`;
                     feedback.style.display = 'block';
 
                     input.value = '';
@@ -1290,14 +1488,21 @@
 
                 let totalExp = 0, totalInc = 0;
                 if (expJson.status === "ok") {
+                    currentMonthDataFull = expJson;
                     const todayDay = new Date().getDate();
-                    if (expJson.data && expJson.data[todayDay]) {
-                        todayExpensesMap = expJson.data[todayDay];
-                        onQuickCatChange();
+                    const userExp = (currentUser === 'yasya') ? (expJson.data_yasya || {}) : (expJson.data_maxim || {});
+                    todayExpensesMap = userExp[todayDay] || {};
+                    onQuickCatChange();
+
+                    totalExp = expJson.month_summary?.all_total || 0;
+
+                    const subtextEl = document.getElementById('userMonthSubtext');
+                    if (subtextEl && expJson.month_summary) {
+                        const ms = expJson.month_summary;
+                        const userVal = (currentUser === 'yasya') ? ms.yasya_total : ms.maxim_total;
+                        const userName = (currentUser === 'yasya') ? 'Яси' : 'Максима';
+                        subtextEl.innerHTML = `Траты ${userName} за месяц: <strong>${Number(userVal).toLocaleString('ru-RU')} ₽</strong> (из ${Number(ms.all_total).toLocaleString('ru-RU')} ₽)`;
                     }
-                    for (let day in expJson.data)
-                        for (let k in expJson.data[day])
-                            totalExp += parseFloat(expJson.data[day][k]) || 0;
                 }
                 if (incJson.status === "ok") {
                     incJson.data.forEach(item => totalInc += parseFloat(item.amount) || 0);
@@ -1312,6 +1517,7 @@
             } catch (e) { }
         }
         initQuickExpense();
+        switchUser(currentUser);
         loadMainSummary();
 
         // ================= СТАТИСТИКА =================
@@ -1336,11 +1542,16 @@
                 for (let k in categories) catTotals[k] = 0;
 
                 if (expJson.status === "ok") {
-                    for (let d in expJson.data) {
-                        for (let k in expJson.data[d]) {
-                            let val = parseFloat(expJson.data[d][k]) || 0;
-                            catTotals[k] += val; totalExp += val;
+                    const ds = expJson.data_total || expJson.data || {};
+                    for (let d in ds) {
+                        for (let k in ds[d]) {
+                            let val = parseFloat(ds[d][k]) || 0;
+                            if (catTotals[k] !== undefined) catTotals[k] += val;
+                            totalExp += val;
                         }
+                    }
+                    if (expJson.month_summary && expJson.month_summary.all_total) {
+                        totalExp = expJson.month_summary.all_total;
                     }
                 }
                 if (incJson.status === "ok") {
@@ -1359,7 +1570,8 @@
                 let chartColors = [
                     '#4CAF50', '#FF9800', '#2196F3', '#9C27B0', '#009688', 
                     '#E91E63', '#795548', '#673AB7', '#F44336', '#EC407A', 
-                    '#FFC107', '#03A9F4', '#2E7D32', '#FF5722', '#7E57C2', '#00BCD4'
+                    '#FFC107', '#03A9F4', '#2E7D32', '#FF5722', '#7E57C2', 
+                    '#00BCD4', '#8BC34A'
                 ];
 
                 let listHtml = '';
@@ -1549,8 +1761,13 @@
                 const response = await fetch(`/api/expenses/month?month_str=${monthsRu[monthIndex]} ${year}`);
                 const json = await response.json();
                 if (json.status === "ok") {
-                    currentMonthData = json.data;
+                    currentMonthDataFull = json;
+                    currentMonthData = (currentUser === 'yasya') ? (json.data_yasya || {}) : (json.data_maxim || {});
                     currentNumDays = json.num_days;
+                    const dailyLabel = document.getElementById('dailyTotalLabel');
+                    if (dailyLabel) {
+                        dailyLabel.innerText = `Итого за день (${currentUser === 'yasya' ? 'Яся' : 'Максим'})`;
+                    }
                     renderForm();
                     updateExpenseUI();
                 } else {
@@ -1660,12 +1877,17 @@
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         date: `${selectedYear}-${String(selectedMonthIndex + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`,
-                        data: dayData
+                        data: dayData,
+                        user: currentUser
                     })
                 });
                 const resJson = await response.json();
                 if (resJson.status === "ok") {
                     showToast("День успешно сохранен!");
+                    if (currentMonthDataFull) {
+                        const targetStore = (currentUser === 'yasya') ? currentMonthDataFull.data_yasya : currentMonthDataFull.data_maxim;
+                        if (targetStore) targetStore[selectedDay] = { ...dayData };
+                    }
                     loadMainSummary();
                 } else {
                     showToast(resJson.message || "Ошибка сохранения", true);
