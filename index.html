@@ -327,81 +327,6 @@
             box-shadow: 0 3px 10px rgba(216, 27, 96, 0.25);
         }
 
-        /* КАРТОЧКА ДОЛЕЙ УЧАСТИЯ */
-        .stat-share-card {
-            background: var(--card-bg);
-            border-radius: var(--border-radius);
-            padding: 16px;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .stat-share-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 13px;
-            font-weight: 700;
-            color: var(--text-muted);
-        }
-
-        .stat-share-header strong {
-            color: var(--text-main);
-            font-size: 14px;
-        }
-
-        .stat-share-bar {
-            height: 12px;
-            width: 100%;
-            border-radius: 6px;
-            background: #EBEBEF;
-            overflow: hidden;
-            display: flex;
-        }
-
-        .stat-share-seg-maxim {
-            background: linear-gradient(90deg, #1976D2, #1565C0);
-            height: 100%;
-            transition: width 0.35s ease;
-        }
-
-        .stat-share-seg-yasya {
-            background: linear-gradient(90deg, #EC407A, #D81B60);
-            height: 100%;
-            transition: width 0.35s ease;
-        }
-
-        .stat-share-legend {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 12px;
-            font-weight: 600;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .stat-share-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 4px 8px;
-            border-radius: 8px;
-        }
-
-        .stat-share-badge.maxim {
-            background: #E3F2FD;
-            color: #1565C0;
-        }
-
-        .stat-share-badge.yasya {
-            background: #FCE4EC;
-            color: #C2185B;
-        }
-
         /* СПЛИТ-МЕТКИ ВНУТРИ КАТЕГОРИИ */
         .category-split-row {
             display: flex;
@@ -1236,22 +1161,6 @@
                 </div>
             </div>
 
-            <!-- КАРТОЧКА ВЗНОСА В БЮДЖЕТ (ДОЛИ РАСХОДОВ) -->
-            <div class="stat-share-card" id="statShareCard">
-                <div class="stat-share-header">
-                    <span>Доли расходов за месяц</span>
-                    <strong id="statShareTotalText">0 ₽</strong>
-                </div>
-                <div class="stat-share-bar">
-                    <div id="statShareBarMaxim" class="stat-share-seg-maxim" style="width: 50%;"></div>
-                    <div id="statShareBarYasya" class="stat-share-seg-yasya" style="width: 50%;"></div>
-                </div>
-                <div class="stat-share-legend">
-                    <span class="stat-share-badge maxim" id="statShareLegendMaxim">👨🏻‍💻 Максим: 0 ₽</span>
-                    <span class="stat-share-badge yasya" id="statShareLegendYasya">👩🏼‍🦰 Яся: 0 ₽</span>
-                </div>
-            </div>
-
             <div id="statLoading" style="text-align:center; padding:20px; color:var(--text-muted);">Анализируем данные...</div>
 
             <div id="statContent" style="display:none; flex-direction:column; gap:16px;">
@@ -1772,29 +1681,7 @@
             const yasTot = parseFloat(ms.yasya_total) || 0;
             const allTot = parseFloat(ms.all_total) || (maxTot + yasTot);
 
-            const shareTotalEl = document.getElementById('statShareTotalText');
-            if (shareTotalEl) shareTotalEl.innerText = allTot.toLocaleString('ru-RU') + ' ₽';
-
-            const barMaxim = document.getElementById('statShareBarMaxim');
-            const barYasya = document.getElementById('statShareBarYasya');
-            const legendMaxim = document.getElementById('statShareLegendMaxim');
-            const legendYasya = document.getElementById('statShareLegendYasya');
-
-            if (allTot > 0) {
-                const pctM = Math.round((maxTot / allTot) * 100);
-                const pctY = 100 - pctM;
-                if (barMaxim) barMaxim.style.width = pctM + '%';
-                if (barYasya) barYasya.style.width = pctY + '%';
-                if (legendMaxim) legendMaxim.innerHTML = `👨🏻‍💻 Максим: <strong>${pctM}%</strong> (${maxTot.toLocaleString('ru-RU')} ₽)`;
-                if (legendYasya) legendYasya.innerHTML = `👩🏼‍🦰 Яся: <strong>${pctY}%</strong> (${yasTot.toLocaleString('ru-RU')} ₽)`;
-            } else {
-                if (barMaxim) barMaxim.style.width = '50%';
-                if (barYasya) barYasya.style.width = '50%';
-                if (legendMaxim) legendMaxim.innerHTML = `👨🏻‍💻 Максим: 0 ₽`;
-                if (legendYasya) legendYasya.innerHTML = `👩🏼‍🦰 Яся: 0 ₽`;
-            }
-
-            // 3. Подсчет доходов, расходов и остатка по выбранному фильтру
+            // 2. Подсчет доходов, расходов и остатка по выбранному фильтру
             let activeExp = 0;
             let activeInc = 0;
 
