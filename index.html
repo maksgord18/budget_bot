@@ -631,9 +631,9 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
-            margin-top: 8px;
-            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 6px;
+            flex-wrap: nowrap;
         }
 
         .today-chip,
@@ -642,15 +642,15 @@
             background: var(--pastel-blue);
             color: var(--text-blue);
             border: 1px solid rgba(21, 101, 192, 0.15);
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 13px;
+            padding: 5px 9px;
+            border-radius: 16px;
+            font-size: 12px;
             font-weight: 600;
             cursor: pointer;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 4px;
+            gap: 3px;
             width: auto;
             height: auto;
             white-space: nowrap;
@@ -669,6 +669,48 @@
         .mandatory-chip:active {
             transform: scale(0.94);
             background: #FFE082;
+        }
+
+        .empty-sheet-card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 32px 20px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+            margin: 12px 0;
+            border: 1px dashed rgba(0, 0, 0, 0.12);
+        }
+
+        .create-sheet-btn {
+            background: #007AFF;
+            color: #ffffff;
+            border: none;
+            border-radius: 14px;
+            padding: 12px 22px;
+            font-size: 14.5px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.25);
+            transition: transform 0.12s, background 0.15s;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .create-sheet-btn:active {
+            transform: scale(0.96);
+            background: #0062CC;
+        }
+
+        .create-sheet-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
         }
 
         .today-chip:disabled {
@@ -1678,11 +1720,31 @@
 
             try {
                 const [expRes, incRes] = await Promise.all([
-                    fetch(`/api/expenses/month?month_str=${monthStr}`),
-                    fetch(`/api/income?month=${monthStr}`)
+                    fetch(`/api/expenses/month?month_str=${encodeURIComponent(monthStr)}`),
+                    fetch(`/api/income?month=${encodeURIComponent(monthStr)}`)
                 ]);
                 statExpJson = await expRes.json();
                 statIncJson = await incRes.json();
+
+                if (statExpJson.status === 'sheet_not_found' || statExpJson.sheet_exists === false) {
+                    let mName = monthStr.split(' ')[0];
+                    let mIdx = monthsRu.indexOf(mName);
+                    document.getElementById('statLoading').innerHTML = `
+                        <div class="empty-sheet-card">
+                            <div style="font-size: 42px; margin-bottom: 10px;">📑</div>
+                            <div style="font-size: 17px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">
+                                Лист «${monthStr}» ещё не создан
+                            </div>
+                            <div style="font-size: 13.5px; color: var(--text-muted); line-height: 1.45; margin-bottom: 20px; max-width: 290px;">
+                                В таблице пока нет данных за этот месяц. Создайте лист, чтобы начать вести учёт!
+                            </div>
+                            <button class="create-sheet-btn" onclick="createMonthSheet('${monthStr}', ${mIdx}, ${currentYear}).then(() => openStatistics('${monthStr}'))">
+                                ➕ Создать лист на ${monthStr}
+                            </button>
+                        </div>`;
+                    return;
+                }
+
                 renderStatistics();
             } catch (e) {
                 document.getElementById('statLoading').innerText = 'Ошибка загрузки данных';
@@ -1934,9 +1996,14 @@
             document.getElementById('incBtnNext').disabled = (mIdx === 11);
 
             try {
-                const res = await fetch(`/api/income?month=${monthStr}`);
+                const res = await fetch(`/api/income?month=${encodeURIComponent(monthStr)}`);
                 const json = await res.json();
+                const incSaveBtn = document.querySelector('#page-income-form .save-btn');
+                const incTotalCard = document.querySelector('#page-income-form .daily-total-card');
+
                 if (json.status === "ok") {
+                    if (incSaveBtn) incSaveBtn.style.display = 'block';
+                    if (incTotalCard) incTotalCard.style.display = 'flex';
                     let html = '';
                     let totalInc = 0;
                     json.data.forEach(item => {
@@ -1961,6 +2028,22 @@
                     document.getElementById('incomeContainer').innerHTML = html;
                     window.currentIncomeData = json.data;
                     document.getElementById('incomeTotal').innerText = totalInc.toLocaleString('ru-RU');
+                } else if (json.status === "sheet_not_found" || json.sheet_exists === false) {
+                    if (incSaveBtn) incSaveBtn.style.display = 'none';
+                    if (incTotalCard) incTotalCard.style.display = 'none';
+                    document.getElementById('incomeContainer').innerHTML = `
+                        <div class="empty-sheet-card">
+                            <div style="font-size: 42px; margin-bottom: 10px;">📑</div>
+                            <div style="font-size: 17px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">
+                                Лист «${monthStr}» ещё не создан
+                            </div>
+                            <div style="font-size: 13.5px; color: var(--text-muted); line-height: 1.45; margin-bottom: 20px; max-width: 290px;">
+                                Создайте лист в Google Таблице в один клик, чтобы вносить доходы!
+                            </div>
+                            <button class="create-sheet-btn" onclick="createMonthSheet('${monthStr}', ${mIdx}, ${currentYear}).then(() => openIncome('${monthStr}'))">
+                                ➕ Создать лист на ${mName}
+                            </button>
+                        </div>`;
                 } else {
                     document.getElementById('incomeContainer').innerHTML = '<div style="text-align:center; color:var(--text-red); padding:20px;">Ошибка: ' + json.message + '</div>';
                 }
@@ -2042,7 +2125,12 @@
             try {
                 const res = await fetch(`/api/mandatory-payments?month=${encodeURIComponent(monthStr)}`);
                 const json = await res.json();
+                const mandSaveBtn = document.querySelector('#page-mandatory-payments .save-btn');
+                const mandTotalCard = document.querySelector('#page-mandatory-payments .daily-total-card');
+
                 if (json.status === 'ok' && json.data && json.data.length > 0) {
+                    if (mandSaveBtn) mandSaveBtn.style.display = 'block';
+                    if (mandTotalCard) mandTotalCard.style.display = 'flex';
                     window.currentMandatoryData = json.data;
                     let html = '';
                     json.data.forEach(item => {
@@ -2060,7 +2148,24 @@
                     });
                     container.innerHTML = html;
                     calculateMandatoryTotal();
+                } else if (json.status === 'sheet_not_found' || json.sheet_exists === false) {
+                    if (mandSaveBtn) mandSaveBtn.style.display = 'none';
+                    if (mandTotalCard) mandTotalCard.style.display = 'none';
+                    container.innerHTML = `
+                        <div class="empty-sheet-card">
+                            <div style="font-size: 42px; margin-bottom: 10px;">📑</div>
+                            <div style="font-size: 17px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">
+                                Лист «${monthStr}» ещё не создан
+                            </div>
+                            <div style="font-size: 13.5px; color: var(--text-muted); line-height: 1.45; margin-bottom: 20px; max-width: 290px;">
+                                Создайте лист для этого месяца, и обязательные платежи перенесутся автоматически!
+                            </div>
+                            <button class="create-sheet-btn" onclick="createMonthSheet('${monthStr}', ${mIdx}, ${y}).then(() => openMandatoryPayments())">
+                                ➕ Создать лист на этот месяц
+                            </button>
+                        </div>`;
                 } else if (json.status === 'ok' && (!json.data || json.data.length === 0)) {
+                    if (mandSaveBtn) mandSaveBtn.style.display = 'none';
                     container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:30px;">Обязательные платежи не найдены в таблице</div>';
                     const tEl = document.getElementById('mandatoryTotal');
                     if (tEl) tEl.innerText = '0';
@@ -2167,7 +2272,7 @@
             document.getElementById('btnNext').disabled = true;
 
             try {
-                const response = await fetch(`/api/expenses/month?month_str=${monthsRu[monthIndex]} ${year}`);
+                const response = await fetch(`/api/expenses/month?month_str=${encodeURIComponent(monthsRu[monthIndex])} ${year}`);
                 const json = await response.json();
                 if (json.status === "ok") {
                     currentMonthDataFull = json;
@@ -2177,13 +2282,97 @@
                     if (dailyLabel) {
                         dailyLabel.innerText = `Итого за день (${currentUser === 'yasya' ? 'Яся' : 'Максим'})`;
                     }
+                    setDailyControlsVisibility(true);
                     renderForm();
                     updateExpenseUI();
+                } else if (json.status === "sheet_not_found" || json.sheet_exists === false) {
+                    renderSheetNotFound(monthIndex, year);
                 } else {
                     document.getElementById('formContainer').innerHTML = '<div style="text-align:center; color:var(--text-red); padding:20px;">Ошибка: ' + json.message + '</div>';
                 }
             } catch (e) {
                 document.getElementById('formContainer').innerHTML = '<div style="text-align:center; color:var(--text-red); padding:20px;">Ошибка сети</div>';
+            }
+        }
+
+        function setDailyControlsVisibility(visible) {
+            const toggle = document.querySelector('#page-expense-daily .user-toggle-container');
+            const totalCard = document.querySelector('#page-expense-daily .daily-total-card');
+            const saveBtn = document.querySelector('#page-expense-daily .save-btn');
+            if (toggle) toggle.style.display = visible ? 'block' : 'none';
+            if (totalCard) totalCard.style.display = visible ? 'flex' : 'none';
+            if (saveBtn) saveBtn.style.display = visible ? 'block' : 'none';
+        }
+
+        function renderSheetNotFound(monthIndex, year) {
+            const mName = monthsRu[monthIndex];
+            const mCapital = mName.charAt(0).toUpperCase() + mName.slice(1);
+
+            document.getElementById('dateDisplay').innerText = `${selectedDay} ${mCapital}`;
+            const targetDate = new Date(year, monthIndex, selectedDay);
+            const daysRu = ["воскресенье", "понедельник", "вторник", "среда", "четверг", "пятница", "суббота"];
+            document.getElementById('weekdayDisplay').innerText = daysRu[targetDate.getDay()];
+            document.getElementById('btnPrev').disabled = false;
+            document.getElementById('btnNext').disabled = false;
+
+            const btnToday = document.getElementById('btnToday');
+            if (btnToday) {
+                const now = new Date();
+                btnToday.disabled = (year === now.getFullYear() && monthIndex === now.getMonth() && selectedDay === now.getDate());
+            }
+
+            setDailyControlsVisibility(false);
+
+            const container = document.getElementById('formContainer');
+            container.innerHTML = `
+                <div class="empty-sheet-card">
+                    <div style="font-size: 42px; margin-bottom: 10px;">📑</div>
+                    <div style="font-size: 17px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">
+                        Лист «${mCapital} ${year}» ещё не создан
+                    </div>
+                    <div style="font-size: 13.5px; color: var(--text-muted); line-height: 1.45; margin-bottom: 20px; max-width: 290px;">
+                        В вашей Google Таблице пока нет этого листа. Создайте его в один клик: скопируются все категории, формулы и обязательные платежи!
+                    </div>
+                    <button class="create-sheet-btn" id="btnCreateSheet" onclick="createMonthSheet('${mName} ${year}', ${monthIndex}, ${year})">
+                        ➕ Создать лист на ${mCapital}
+                    </button>
+                </div>
+            `;
+        }
+
+        async function createMonthSheet(monthStr, monthIndex, year) {
+            haptic('medium');
+            const btn = document.getElementById('btnCreateSheet');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = "⏳ Создаём лист в таблице...";
+            }
+
+            try {
+                const res = await fetch('/api/create-month-sheet', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ month_str: monthStr })
+                });
+                const json = await res.json();
+                if (json.status === 'ok') {
+                    showToast('✅ ' + (json.message || 'Лист успешно создан!'));
+                    if (typeof monthIndex !== 'undefined') {
+                        await openExpenseMonth(monthIndex, year);
+                    }
+                } else {
+                    showToast(json.message || 'Ошибка создания листа', true);
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerText = `➕ Создать лист на ${monthStr}`;
+                    }
+                }
+            } catch (e) {
+                showToast('Ошибка сети при создании листа', true);
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = `➕ Создать лист на ${monthStr}`;
+                }
             }
         }
 

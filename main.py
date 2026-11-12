@@ -114,9 +114,6 @@ def find_worksheet(sh, dt_or_str):
         if f"{m_idx:02d}.{year}" in title or (str(year) in title and months[m_idx - 1] in title):
             return ws
 
-    worksheets = sh.worksheets()
-    if worksheets:
-        return worksheets[0]
     raise gspread.WorksheetNotFound(f"Лист для '{dt_or_str}' не найден")
 
 def clean_val(raw_val):
@@ -181,14 +178,10 @@ async def get_expenses_month(month_str: str, user: str = "all"):
             worksheet = find_worksheet(sh, month_str)
         except gspread.WorksheetNotFound:
             return JSONResponse({
-                "status": "ok",
-                "data": {},
-                "data_maxim": {},
-                "data_yasya": {},
-                "data_total": {},
-                "totals_by_day": {"maxim": {}, "yasya": {}, "total": {}},
-                "month_summary": {"maxim_total": 0, "yasya_total": 0, "all_total": 0},
-                "num_days": 30
+                "status": "sheet_not_found",
+                "sheet_exists": False,
+                "month_str": month_str,
+                "message": f"Лист на {month_str} не найден в таблице"
             })
 
         all_values = worksheet.get_all_values()
@@ -222,7 +215,7 @@ async def get_expenses_month(month_str: str, user: str = "all"):
                 if not v_tot and (v_max or v_yas):
                     try:
                         tot_f = (float(v_max) if v_max else 0) + (float(v_yas) if v_yas else 0)
-                        v_tot = str(int(tot_f)) if tot_f.is_integer() else str(round(tot_f, 2))
+                        v_tot = str(int(tot_f)) if float(tot_f).is_integer() else str(round(tot_f, 2))
                     except ValueError:
                         pass
 
@@ -239,14 +232,14 @@ async def get_expenses_month(month_str: str, user: str = "all"):
 
             if not t_max:
                 sum_m = sum(float(data_maxim[str(d)][k]) for k in data_maxim[str(d)] if data_maxim[str(d)][k])
-                t_max = str(int(sum_m)) if sum_m.is_integer() else str(round(sum_m, 2))
+                t_max = str(int(sum_m)) if float(sum_m).is_integer() else str(round(sum_m, 2))
             if not t_yas:
                 sum_y = sum(float(data_yasya[str(d)][k]) for k in data_yasya[str(d)] if data_yasya[str(d)][k])
-                t_yas = str(int(sum_y)) if sum_y.is_integer() else str(round(sum_y, 2))
+                t_yas = str(int(sum_y)) if float(sum_y).is_integer() else str(round(sum_y, 2))
             if not t_all:
                 try:
                     tot_s = (float(t_max) if t_max else 0) + (float(t_yas) if t_yas else 0)
-                    t_all = str(int(tot_s)) if tot_s.is_integer() else str(round(tot_s, 2))
+                    t_all = str(int(tot_s)) if float(tot_s).is_integer() else str(round(tot_s, 2))
                 except ValueError:
                     pass
 
@@ -293,7 +286,11 @@ async def save_day(request: Request):
         data = payload.get("data", {})
         user = str(payload.get("user", "maxim")).lower()
 
-        worksheet = find_worksheet(sh, dt)
+        try:
+            worksheet = find_worksheet(sh, dt)
+        except gspread.WorksheetNotFound:
+            return JSONResponse({"status": "error", "message": f"Лист на {dt.strftime('%m.%Y')} не найден в таблице. Создайте его кнопкой '+ Создать лист'."})
+
         all_values = worksheet.get_all_values()
         cat_rows, has_levels = get_category_rows(all_values)
         day_offset = 2 if has_levels else 1
@@ -336,7 +333,10 @@ async def quick_expense(request: Request):
         if amount <= 0:
             return JSONResponse({"status": "error", "message": "Введите сумму больше 0"})
 
-        worksheet = find_worksheet(sh, dt)
+        try:
+            worksheet = find_worksheet(sh, dt)
+        except gspread.WorksheetNotFound:
+            return JSONResponse({"status": "error", "message": f"Лист на {dt.strftime('%m.%Y')} не найден в таблице. Создайте его кнопкой '+ Создать лист'."})
         all_values = worksheet.get_all_values()
         cat_rows, has_levels = get_category_rows(all_values)
 
@@ -380,7 +380,17 @@ async def quick_expense(request: Request):
 @app.get("/api/income")
 async def get_income(month: str):
     try:
-        worksheet = find_worksheet(sh, month)
+        try:
+            worksheet = find_worksheet(sh, month)
+        except gspread.WorksheetNotFound:
+            return JSONResponse({
+                "status": "sheet_not_found",
+                "sheet_exists": False,
+                "month_str": month,
+                "message": f"Лист на {month} не найден в таблице",
+                "data": []
+            })
+
         vals = worksheet.get_all_values()
         income_data = []
 
@@ -434,7 +444,11 @@ async def save_income(request: Request):
         month_str = payload.get("month_str")
         items = payload.get("items", [])
 
-        worksheet = find_worksheet(sh, month_str)
+        try:
+            worksheet = find_worksheet(sh, month_str)
+        except gspread.WorksheetNotFound:
+            return JSONResponse({"status": "error", "message": f"Лист на {month_str} не найден в таблице. Создайте его кнопкой '+ Создать лист'."})
+
         cells_to_update = []
         for item in items:
             row = int(item["row"])
@@ -454,7 +468,17 @@ async def save_income(request: Request):
 @app.get("/api/mandatory-payments")
 async def get_mandatory_payments(month: str):
     try:
-        worksheet = find_worksheet(sh, month)
+        try:
+            worksheet = find_worksheet(sh, month)
+        except gspread.WorksheetNotFound:
+            return JSONResponse({
+                "status": "sheet_not_found",
+                "sheet_exists": False,
+                "month_str": month,
+                "message": f"Лист на {month} не найден в таблице",
+                "data": []
+            })
+
         vals = worksheet.get_all_values()
 
         header_row, name_col, val_col = -1, -1, -1
@@ -496,7 +520,11 @@ async def save_mandatory_payments(request: Request):
         month_str = payload.get("month_str")
         items = payload.get("items", [])
 
-        worksheet = find_worksheet(sh, month_str)
+        try:
+            worksheet = find_worksheet(sh, month_str)
+        except gspread.WorksheetNotFound:
+            return JSONResponse({"status": "error", "message": f"Лист на {month_str} не найден в таблице. Создайте его кнопкой '+ Создать лист'."})
+
         cells_to_update = []
         for item in items:
             row = int(item["row"])
@@ -513,6 +541,119 @@ async def save_mandatory_payments(request: Request):
             worksheet.update_cells(cells_to_update)
 
         return JSONResponse({"status": "ok"})
+    except Exception as e:
+        return JSONResponse({"status": "error", "message": str(e)})
+
+# ================= СОЗДАНИЕ НОВОГО ЛИСТА МЕСЯЦА =================
+@app.post("/api/create-month-sheet")
+async def create_month_sheet(request: Request):
+    try:
+        payload = await request.json()
+        month_str = payload.get("month_str", "")
+
+        months_ru = ["январь", "февраль", "март", "апрель", "май", "июнь", 
+                     "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"]
+        s = str(month_str).strip().lower()
+        m_idx = None
+        year = None
+        for i, m in enumerate(months_ru, start=1):
+            if m in s:
+                m_idx = i
+                break
+        parts = s.replace('.', ' ').replace('/', ' ').replace('-', ' ').split()
+        for p in parts:
+            if p.isdigit() and len(p) == 4:
+                year = int(p)
+            elif p.isdigit() and 1 <= int(p) <= 12 and m_idx is None:
+                m_idx = int(p)
+
+        if not m_idx or not year:
+            return JSONResponse({"status": "error", "message": f"Не удалось определить месяц из строки: '{month_str}'"})
+
+        target_title = f"{m_idx:02d}.{year}"
+
+        all_worksheets = sh.worksheets()
+        titles = {ws.title.lower(): ws for ws in all_worksheets}
+        if target_title.lower() in titles:
+            return JSONResponse({"status": "ok", "message": f"Лист {target_title} уже существует", "title": target_title})
+
+        template_ws = None
+        for ws in all_worksheets:
+            if ws.title.lower() == "11.2026":
+                template_ws = ws
+                break
+        if not template_ws:
+            for ws in all_worksheets:
+                if any(ch.isdigit() for ch in ws.title) and "." in ws.title:
+                    template_ws = ws
+                    break
+        if not template_ws:
+            template_ws = all_worksheets[-1]
+
+        new_ws = template_ws.duplicate(new_sheet_name=target_title)
+
+        days_in_target = calendar.monthrange(year, m_idx)[1]
+        vals = new_ws.get_all_values()
+        cat_rows, has_levels = get_category_rows(vals)
+        day_offset = 2 if has_levels else 1
+
+        days_in_template = 0
+        if vals and len(vals) > 0:
+            for c in vals[0][day_offset:]:
+                if 'итого' in c.lower():
+                    break
+                days_in_template += 1
+        if days_in_template < 28 or days_in_template > 31:
+            days_in_template = 30
+
+        month_short = ["янв.", "февр.", "мар.", "апр.", "мая", "июн.", "июл.", "авг.", "сент.", "окт.", "нояб.", "дек."]
+        cur_m_name = month_short[m_idx - 1]
+
+        if days_in_target == 31 and days_in_template == 30:
+            new_ws.insert_cols([['']], col=33, inherit_from_before=True)
+            vals = new_ws.get_all_values()
+            cat_rows, has_levels = get_category_rows(vals)
+
+            cells_to_set = []
+            for k, rows in cat_rows.items():
+                r_tot = rows['total']
+                r_max = rows['maxim']
+                r_yas = rows['yasya']
+                cells_to_set.append(gspread.Cell(row=r_tot, col=33, value=f"=AG{r_max}+AG{r_yas}"))
+                cells_to_set.append(gspread.Cell(row=r_tot, col=34, value=f"=AH{r_max}+AH{r_yas}"))
+                cells_to_set.append(gspread.Cell(row=r_max, col=34, value=f"=SUM(C{r_max}:AG{r_max})"))
+                cells_to_set.append(gspread.Cell(row=r_yas, col=34, value=f"=SUM(C{r_yas}:AG{r_yas})"))
+
+            max_cells = '+'.join([f"AG{rows['maxim']}" for rows in cat_rows.values()])
+            yas_cells = '+'.join([f"AG{rows['yasya']}" for rows in cat_rows.values()])
+            cells_to_set.append(gspread.Cell(row=53, col=33, value=f"={max_cells}"))
+            cells_to_set.append(gspread.Cell(row=54, col=33, value=f"={yas_cells}"))
+            cells_to_set.append(gspread.Cell(row=55, col=33, value="=AG53+AG54"))
+            new_ws.update_cells(cells_to_set, value_input_option='USER_ENTERED')
+
+        header_cells = []
+        for d in range(1, days_in_target + 1):
+            col_num = day_offset + d
+            header_cells.append(gspread.Cell(row=1, col=col_num, value=f"{d} {cur_m_name}"))
+        new_ws.update_cells(header_cells, value_input_option='USER_ENTERED')
+
+        end_col_letter = 'AG' if days_in_target >= 31 else 'AF'
+        clear_ranges = []
+        for k, rows in cat_rows.items():
+            r_max = rows['maxim']
+            r_yas = rows['yasya']
+            clear_ranges.append(f"C{r_max}:{end_col_letter}{r_yas}")
+
+        clear_ranges.append("D59:D60")
+        clear_ranges.append("E65:E71")
+
+        new_ws.batch_clear(clear_ranges)
+
+        return JSONResponse({
+            "status": "ok",
+            "message": f"Лист {target_title} успешно создан!",
+            "title": target_title
+        })
     except Exception as e:
         return JSONResponse({"status": "error", "message": str(e)})
 
