@@ -13,7 +13,13 @@ from aiogram.types import WebAppInfo, MenuButtonWebApp
 
 TOKEN = os.getenv("BOT_TOKEN", "8277410883:AAGgHDgwaFMDPbrsfIdCbmngMmg6Izdld70")
 WEBAPP_URL = os.getenv("WEBAPP_URL", "https://865f-185-223-171-52.ngrok-free.app") 
-SPREADSHEET_ID = os.getenv("SPREADSHEET_ID", "1PfdAFGpRrIc_LWsmK88A-AWHs8-zpXMz_t2kxGDLpfA")
+OLD_SPREADSHEET_ID = "1x_aiXFd3Y0Mh_eHtahz2h6HnW6vx_1GhpbpFup9ljCU"
+TARGET_SPREADSHEET_ID = "1PfdAFGpRrIc_LWsmK88A-AWHs8-zpXMz_t2kxGDLpfA"
+_env_sheet = os.getenv("SPREADSHEET_ID", "").strip()
+if _env_sheet and _env_sheet != OLD_SPREADSHEET_ID:
+    SPREADSHEET_ID = _env_sheet
+else:
+    SPREADSHEET_ID = TARGET_SPREADSHEET_ID
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
@@ -253,9 +259,9 @@ async def get_expenses_month(month_str: str, user: str = "all"):
         all_month = max_month + yas_month
 
         month_summary = {
-            "maxim_total": int(max_month) if max_month.is_integer() else round(max_month, 2),
-            "yasya_total": int(yas_month) if yas_month.is_integer() else round(yas_month, 2),
-            "all_total": int(all_month) if all_month.is_integer() else round(all_month, 2)
+            "maxim_total": int(max_month) if float(max_month).is_integer() else round(float(max_month), 2),
+            "yasya_total": int(yas_month) if float(yas_month).is_integer() else round(float(yas_month), 2),
+            "all_total": int(all_month) if float(all_month).is_integer() else round(float(all_month), 2)
         }
 
         user_req = str(user).lower()
