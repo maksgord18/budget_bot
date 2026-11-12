@@ -266,6 +266,171 @@
             font-size: 16px;
         }
 
+        /* АНАЛИТИКА: ТУМБЛЕР 3 РЕЖИМА */
+        .stat-toggle-container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            margin-bottom: 2px;
+        }
+
+        .stat-toggle-track {
+            display: flex;
+            background: #EBEBEF;
+            padding: 3px;
+            border-radius: 14px;
+            width: 100%;
+            max-width: 360px;
+            gap: 3px;
+            box-sizing: border-box;
+        }
+
+        .stat-toggle-item {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 9px 6px;
+            border: none;
+            background: transparent;
+            border-radius: 11px;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: inherit;
+            white-space: nowrap;
+        }
+
+        .stat-toggle-item.active {
+            background: #FFFFFF;
+            color: var(--text-main);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .stat-toggle-item.active.theme-all-active {
+            background: #2C2C2E;
+            color: #FFFFFF;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .stat-toggle-item.active.theme-maxim-active {
+            background: #1565C0;
+            color: #FFFFFF;
+            box-shadow: 0 3px 10px rgba(21, 101, 192, 0.25);
+        }
+
+        .stat-toggle-item.active.theme-yasya-active {
+            background: #D81B60;
+            color: #FFFFFF;
+            box-shadow: 0 3px 10px rgba(216, 27, 96, 0.25);
+        }
+
+        /* КАРТОЧКА ДОЛЕЙ УЧАСТИЯ */
+        .stat-share-card {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 16px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .stat-share-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+
+        .stat-share-header strong {
+            color: var(--text-main);
+            font-size: 14px;
+        }
+
+        .stat-share-bar {
+            height: 12px;
+            width: 100%;
+            border-radius: 6px;
+            background: #EBEBEF;
+            overflow: hidden;
+            display: flex;
+        }
+
+        .stat-share-seg-maxim {
+            background: linear-gradient(90deg, #1976D2, #1565C0);
+            height: 100%;
+            transition: width 0.35s ease;
+        }
+
+        .stat-share-seg-yasya {
+            background: linear-gradient(90deg, #EC407A, #D81B60);
+            height: 100%;
+            transition: width 0.35s ease;
+        }
+
+        .stat-share-legend {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            font-weight: 600;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .stat-share-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 8px;
+        }
+
+        .stat-share-badge.maxim {
+            background: #E3F2FD;
+            color: #1565C0;
+        }
+
+        .stat-share-badge.yasya {
+            background: #FCE4EC;
+            color: #C2185B;
+        }
+
+        /* СПЛИТ-МЕТКИ ВНУТРИ КАТЕГОРИИ */
+        .category-split-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 3px;
+            flex-wrap: wrap;
+        }
+
+        .split-pill {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 1px 6px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .split-pill.maxim {
+            background: #E3F2FD;
+            color: #1565C0;
+        }
+
+        .split-pill.yasya {
+            background: #FCE4EC;
+            color: #C2185B;
+        }
+
         /* КАРТОЧКА БЫСТРОГО ВВОДА */
         .quick-expense-card {
             background: var(--card-bg);
@@ -1055,22 +1220,53 @@
                     <span class="header-subtitle">Нажмите для выбора месяца ▾</span>
                 </div>
             </div>
-            <div id="statLoading" style="text-align:center; padding:20px; color:var(--text-muted);">Анализируем
-                данные...</div>
+
+            <!-- ТУМБЛЕР АНАЛИТИКИ: 👥 Вместе | 👨🏻‍💻 Максим | 👩🏼‍🦰 Яся -->
+            <div class="stat-toggle-container">
+                <div class="stat-toggle-track">
+                    <button type="button" id="statToggleAll" class="stat-toggle-item active theme-all-active" onclick="switchStatUser('all')">
+                        <span>👥 Вместе</span>
+                    </button>
+                    <button type="button" id="statToggleMaxim" class="stat-toggle-item" onclick="switchStatUser('maxim')">
+                        <span>👨🏻‍💻 Максим</span>
+                    </button>
+                    <button type="button" id="statToggleYasya" class="stat-toggle-item" onclick="switchStatUser('yasya')">
+                        <span>👩🏼‍🦰 Яся</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- КАРТОЧКА ВЗНОСА В БЮДЖЕТ (ДОЛИ РАСХОДОВ) -->
+            <div class="stat-share-card" id="statShareCard">
+                <div class="stat-share-header">
+                    <span>Доли расходов за месяц</span>
+                    <strong id="statShareTotalText">0 ₽</strong>
+                </div>
+                <div class="stat-share-bar">
+                    <div id="statShareBarMaxim" class="stat-share-seg-maxim" style="width: 50%;"></div>
+                    <div id="statShareBarYasya" class="stat-share-seg-yasya" style="width: 50%;"></div>
+                </div>
+                <div class="stat-share-legend">
+                    <span class="stat-share-badge maxim" id="statShareLegendMaxim">👨🏻‍💻 Максим: 0 ₽</span>
+                    <span class="stat-share-badge yasya" id="statShareLegendYasya">👩🏼‍🦰 Яся: 0 ₽</span>
+                </div>
+            </div>
+
+            <div id="statLoading" style="text-align:center; padding:20px; color:var(--text-muted);">Анализируем данные...</div>
 
             <div id="statContent" style="display:none; flex-direction:column; gap:16px;">
                 <div class="summary-card" style="margin:0;">
                     <div class="summary-grid">
                         <div class="summary-item income">
-                            <div class="summary-label">Доходы</div>
+                            <div class="summary-label" id="statIncLabel">Доходы (Всего)</div>
                             <div class="summary-val" id="statTotalInc">0 ₽</div>
                         </div>
                         <div class="summary-item expense">
-                            <div class="summary-label">Расходы</div>
+                            <div class="summary-label" id="statExpLabel">Расходы (Всего)</div>
                             <div class="summary-val" id="statTotalExp">0 ₽</div>
                         </div>
                         <div class="summary-item balance">
-                            <div class="summary-label">Остаток</div>
+                            <div class="summary-label" id="statBalLabel">Остаток</div>
                             <div class="summary-val" id="statDelta">0 ₽</div>
                         </div>
                     </div>
@@ -1522,6 +1718,16 @@
 
         // ================= СТАТИСТИКА =================
         let chartInstance = null;
+        let currentStatFilter = 'all'; // 'all' | 'maxim' | 'yasya'
+        let statExpJson = null;
+        let statIncJson = null;
+
+        function switchStatUser(filter) {
+            haptic('selection');
+            currentStatFilter = filter;
+            renderStatistics();
+        }
+
         async function openStatistics(monthStr) {
             haptic('medium');
             document.getElementById('statTitle').innerText = 'Аналитика: ' + monthStr;
@@ -1534,78 +1740,246 @@
                     fetch(`/api/expenses/month?month_str=${monthStr}`),
                     fetch(`/api/income?month=${monthStr}`)
                 ]);
-                const expJson = await expRes.json();
-                const incJson = await incRes.json();
+                statExpJson = await expRes.json();
+                statIncJson = await incRes.json();
+                renderStatistics();
+            } catch (e) {
+                document.getElementById('statLoading').innerText = 'Ошибка загрузки данных';
+            }
+        }
 
-                let totalExp = 0, totalInc = 0;
-                let catTotals = {};
-                for (let k in categories) catTotals[k] = 0;
+        function renderStatistics() {
+            if (!statExpJson) return;
 
-                if (expJson.status === "ok") {
-                    const ds = expJson.data_total || expJson.data || {};
-                    for (let d in ds) {
-                        for (let k in ds[d]) {
-                            let val = parseFloat(ds[d][k]) || 0;
-                            if (catTotals[k] !== undefined) catTotals[k] += val;
-                            totalExp += val;
-                        }
-                    }
-                    if (expJson.month_summary && expJson.month_summary.all_total) {
-                        totalExp = expJson.month_summary.all_total;
-                    }
+            // 1. Переключение активных кнопок тумблера
+            ['All', 'Maxim', 'Yasya'].forEach(name => {
+                const btn = document.getElementById('statToggle' + name);
+                if (btn) {
+                    btn.classList.remove('active', 'theme-all-active', 'theme-maxim-active', 'theme-yasya-active');
                 }
-                if (incJson.status === "ok") {
-                    incJson.data.forEach(item => totalInc += parseFloat(item.amount) || 0);
+            });
+            if (currentStatFilter === 'all') {
+                document.getElementById('statToggleAll')?.classList.add('active', 'theme-all-active');
+            } else if (currentStatFilter === 'maxim') {
+                document.getElementById('statToggleMaxim')?.classList.add('active', 'theme-maxim-active');
+            } else if (currentStatFilter === 'yasya') {
+                document.getElementById('statToggleYasya')?.classList.add('active', 'theme-yasya-active');
+            }
+
+            // 2. Доли расходов за месяц (Полоса долей)
+            const ms = statExpJson.month_summary || {};
+            const maxTot = parseFloat(ms.maxim_total) || 0;
+            const yasTot = parseFloat(ms.yasya_total) || 0;
+            const allTot = parseFloat(ms.all_total) || (maxTot + yasTot);
+
+            const shareTotalEl = document.getElementById('statShareTotalText');
+            if (shareTotalEl) shareTotalEl.innerText = allTot.toLocaleString('ru-RU') + ' ₽';
+
+            const barMaxim = document.getElementById('statShareBarMaxim');
+            const barYasya = document.getElementById('statShareBarYasya');
+            const legendMaxim = document.getElementById('statShareLegendMaxim');
+            const legendYasya = document.getElementById('statShareLegendYasya');
+
+            if (allTot > 0) {
+                const pctM = Math.round((maxTot / allTot) * 100);
+                const pctY = 100 - pctM;
+                if (barMaxim) barMaxim.style.width = pctM + '%';
+                if (barYasya) barYasya.style.width = pctY + '%';
+                if (legendMaxim) legendMaxim.innerHTML = `👨🏻‍💻 Максим: <strong>${pctM}%</strong> (${maxTot.toLocaleString('ru-RU')} ₽)`;
+                if (legendYasya) legendYasya.innerHTML = `👩🏼‍🦰 Яся: <strong>${pctY}%</strong> (${yasTot.toLocaleString('ru-RU')} ₽)`;
+            } else {
+                if (barMaxim) barMaxim.style.width = '50%';
+                if (barYasya) barYasya.style.width = '50%';
+                if (legendMaxim) legendMaxim.innerHTML = `👨🏻‍💻 Максим: 0 ₽`;
+                if (legendYasya) legendYasya.innerHTML = `👩🏼‍🦰 Яся: 0 ₽`;
+            }
+
+            // 3. Подсчет доходов, расходов и остатка по выбранному фильтру
+            let activeExp = 0;
+            let activeInc = 0;
+
+            if (statIncJson && statIncJson.data) {
+                statIncJson.data.forEach(item => {
+                    const amt = parseFloat(item.amount) || 0;
+                    if (currentStatFilter === 'all') {
+                        activeInc += amt;
+                    } else if (currentStatFilter === 'maxim') {
+                        if (item.user === 'maxim') activeInc += amt;
+                    } else if (currentStatFilter === 'yasya') {
+                        if (item.user === 'yasya') activeInc += amt;
+                    }
+                });
+            }
+
+            if (currentStatFilter === 'all') {
+                activeExp = allTot;
+            } else if (currentStatFilter === 'maxim') {
+                activeExp = maxTot;
+            } else if (currentStatFilter === 'yasya') {
+                activeExp = yasTot;
+            }
+
+            const incLabel = document.getElementById('statIncLabel');
+            const expLabel = document.getElementById('statExpLabel');
+            if (incLabel && expLabel) {
+                if (currentStatFilter === 'all') {
+                    incLabel.innerText = 'Доходы (Всего)';
+                    expLabel.innerText = 'Расходы (Всего)';
+                } else if (currentStatFilter === 'maxim') {
+                    incLabel.innerText = 'Доходы (Максим)';
+                    expLabel.innerText = 'Расходы (Максим)';
+                } else {
+                    incLabel.innerText = 'Доходы (Яся)';
+                    expLabel.innerText = 'Расходы (Яся)';
                 }
+            }
 
-                document.getElementById('statTotalInc').innerText = totalInc.toLocaleString('ru-RU') + ' ₽';
-                document.getElementById('statTotalExp').innerText = totalExp.toLocaleString('ru-RU') + ' ₽';
-                let delta = totalInc - totalExp;
-                let deltaEl = document.getElementById('statDelta');
-                deltaEl.innerText = delta.toLocaleString('ru-RU') + ' ₽';
-                deltaEl.style.color = delta >= 0 ? 'var(--text-blue)' : 'var(--text-red)';
+            document.getElementById('statTotalInc').innerText = activeInc.toLocaleString('ru-RU') + ' ₽';
+            document.getElementById('statTotalExp').innerText = activeExp.toLocaleString('ru-RU') + ' ₽';
+            const delta = activeInc - activeExp;
+            const deltaEl = document.getElementById('statDelta');
+            deltaEl.innerText = delta.toLocaleString('ru-RU') + ' ₽';
+            deltaEl.style.color = delta >= 0 ? 'var(--text-blue)' : 'var(--text-red)';
 
-                let sortedCats = Object.keys(catTotals).sort((a, b) => catTotals[b] - catTotals[a]);
-                let chartLabels = [], chartData = [];
-                let chartColors = [
+            // 4. Подсчет сумм по категориям (Максим, Яся, Всего)
+            let catTotalsMaxim = {};
+            let catTotalsYasya = {};
+            let catTotalsCombined = {};
+            for (let k in categories) {
+                catTotalsMaxim[k] = 0;
+                catTotalsYasya[k] = 0;
+                catTotalsCombined[k] = 0;
+            }
+
+            const dMax = statExpJson.data_maxim || {};
+            const dYas = statExpJson.data_yasya || {};
+
+            for (let d in dMax) {
+                for (let k in dMax[d]) {
+                    let v = parseFloat(dMax[d][k]) || 0;
+                    if (catTotalsMaxim[k] !== undefined) catTotalsMaxim[k] += v;
+                }
+            }
+            for (let d in dYas) {
+                for (let k in dYas[d]) {
+                    let v = parseFloat(dYas[d][k]) || 0;
+                    if (catTotalsYasya[k] !== undefined) catTotalsYasya[k] += v;
+                }
+            }
+            for (let k in categories) {
+                catTotalsCombined[k] = catTotalsMaxim[k] + catTotalsYasya[k];
+            }
+
+            let activeCatTotals = {};
+            if (currentStatFilter === 'all') {
+                activeCatTotals = catTotalsCombined;
+            } else if (currentStatFilter === 'maxim') {
+                activeCatTotals = catTotalsMaxim;
+            } else {
+                activeCatTotals = catTotalsYasya;
+            }
+
+            // 5. Построение диаграммы
+            let sortedCats = Object.keys(activeCatTotals).sort((a, b) => activeCatTotals[b] - activeCatTotals[a]);
+            let chartLabels = [], chartData = [];
+
+            let chartColors = [];
+            if (currentStatFilter === 'maxim') {
+                chartColors = [
+                    '#1565C0', '#1976D2', '#1E88E5', '#2196F3', '#42A5F5', 
+                    '#64B5F6', '#90CAF9', '#0D47A1', '#0097A7', '#00ACC1', 
+                    '#26C6DA', '#00897B', '#43A047', '#5C6BC0', '#3949AB', '#283593', '#1A237E'
+                ];
+            } else if (currentStatFilter === 'yasya') {
+                chartColors = [
+                    '#D81B60', '#E91E63', '#EC407A', '#F06292', '#F48FB1', 
+                    '#AD1457', '#880E4F', '#BA68C8', '#AB47BC', '#9C27B0', 
+                    '#8E24AA', '#7B1FA2', '#FF4081', '#FF80AB', '#F8BBD0', '#CE93D8', '#E1BEE7'
+                ];
+            } else {
+                chartColors = [
                     '#4CAF50', '#FF9800', '#2196F3', '#9C27B0', '#009688', 
                     '#E91E63', '#795548', '#673AB7', '#F44336', '#EC407A', 
                     '#FFC107', '#03A9F4', '#2E7D32', '#FF5722', '#7E57C2', 
                     '#00BCD4', '#8BC34A'
                 ];
+            }
 
-                let listHtml = '';
-                sortedCats.forEach((k, i) => {
-                    let val = catTotals[k];
-                    let catInfo = categories[k] || { name: k, icon: '🏷', bg: '#f0f0f0', color: '#666' };
-                    if (val > 0) {
-                        let color = chartColors[i % chartColors.length];
-                        chartLabels.push(catInfo.name);
-                        chartData.push(val);
-                        listHtml += `<div class="category-row">
-                            <div class="category-left">
-                                <div class="category-icon-box" style="background:${catInfo.bg}; color:${catInfo.color}; font-size:18px;">${catInfo.icon}</div>
-                                <span class="category-name">${catInfo.name}</span>
-                            </div>
-                            <strong style="font-size:15px; font-weight:700;">${val.toLocaleString('ru-RU')} ₽</strong>
-                        </div>`;
+            // 6. Формирование списка категорий со сплит-разбивкой
+            let listHtml = '';
+            sortedCats.forEach((k, i) => {
+                let activeVal = activeCatTotals[k];
+                let valM = catTotalsMaxim[k] || 0;
+                let valY = catTotalsYasya[k] || 0;
+                let catInfo = categories[k] || { name: k, icon: '🏷', bg: '#f0f0f0', color: '#666' };
+
+                if (activeVal > 0) {
+                    let color = chartColors[i % chartColors.length];
+                    chartLabels.push(catInfo.name);
+                    chartData.push(activeVal);
+
+                    let splitSubHtml = '';
+                    if (currentStatFilter === 'all') {
+                        let mBadge = valM > 0 ? `<span class="split-pill maxim">👨🏻‍💻 ${valM.toLocaleString('ru-RU')} ₽</span>` : '';
+                        let yBadge = valY > 0 ? `<span class="split-pill yasya">👩🏼‍🦰 ${valY.toLocaleString('ru-RU')} ₽</span>` : '';
+                        if (mBadge && yBadge) {
+                            splitSubHtml = `<div class="category-split-row">${mBadge}${yBadge}</div>`;
+                        } else if (mBadge) {
+                            splitSubHtml = `<div class="category-split-row">${mBadge}</div>`;
+                        } else if (yBadge) {
+                            splitSubHtml = `<div class="category-split-row">${yBadge}</div>`;
+                        }
                     }
-                });
-                if (chartData.length === 0) listHtml = '<div style="text-align:center; color:var(--text-muted); padding:20px;">Нет расходов в этом месяце</div>';
-                document.getElementById('statCategories').innerHTML = listHtml;
 
-                if (chartInstance) chartInstance.destroy();
+                    let amountColor = (currentStatFilter === 'maxim') ? '#1565C0' : ((currentStatFilter === 'yasya') ? '#D81B60' : 'var(--text-main)');
+
+                    listHtml += `<div class="category-row">
+                        <div class="category-left">
+                            <div class="category-icon-box" style="background:${catInfo.bg}; color:${catInfo.color}; font-size:18px;">${catInfo.icon}</div>
+                            <div class="category-text-wrap">
+                                <span class="category-name">${catInfo.name}</span>
+                                ${splitSubHtml}
+                            </div>
+                        </div>
+                        <strong style="font-size:15px; font-weight:700; color:${amountColor};">${activeVal.toLocaleString('ru-RU')} ₽</strong>
+                    </div>`;
+                }
+            });
+
+            if (chartData.length === 0) {
+                listHtml = `<div style="text-align:center; color:var(--text-muted); padding:30px 20px;">
+                    <div style="font-size:32px; margin-bottom:8px;">📊</div>
+                    <div>Нет расходов в этом месяце</div>
+                </div>`;
+            }
+            document.getElementById('statCategories').innerHTML = listHtml;
+
+            if (chartInstance) chartInstance.destroy();
+            if (chartData.length > 0) {
+                document.getElementById('expenseChart').style.display = 'block';
                 chartInstance = new Chart(document.getElementById('expenseChart').getContext('2d'), {
                     type: 'doughnut',
-                    data: { labels: chartLabels, datasets: [{ data: chartData, backgroundColor: chartColors, borderWidth: 0 }] },
-                    options: { responsive: true, plugins: { legend: { display: false } }, cutout: '70%' }
+                    data: { 
+                        labels: chartLabels, 
+                        datasets: [{ 
+                            data: chartData, 
+                            backgroundColor: chartColors, 
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }] 
+                    },
+                    options: { 
+                        responsive: true, 
+                        plugins: { legend: { display: false } }, 
+                        cutout: '72%' 
+                    }
                 });
-
-                document.getElementById('statLoading').style.display = 'none';
-                document.getElementById('statContent').style.display = 'flex';
-            } catch (e) {
-                document.getElementById('statLoading').innerText = 'Ошибка загрузки данных';
+            } else {
+                document.getElementById('expenseChart').style.display = 'none';
             }
+
+            document.getElementById('statLoading').style.display = 'none';
+            document.getElementById('statContent').style.display = 'flex';
         }
 
         // ================= ДОХОДЫ =================
