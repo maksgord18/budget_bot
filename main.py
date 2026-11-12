@@ -450,6 +450,72 @@ async def save_income(request: Request):
     except Exception as e:
         return JSONResponse({"status": "error", "message": str(e)})
 
+# ================= ОБЯЗАТЕЛЬНЫЕ ПЛАТЕЖИ =================
+@app.get("/api/mandatory-payments")
+async def get_mandatory_payments(month: str):
+    try:
+        worksheet = find_worksheet(sh, month)
+        vals = worksheet.get_all_values()
+
+        header_row, name_col, val_col = -1, -1, -1
+        for r_idx, row in enumerate(vals):
+            for c_idx, cell in enumerate(row):
+                if "обязательные платежи" in cell.lower():
+                    header_row = r_idx
+                    name_col = c_idx
+                    val_col = c_idx + 1
+                    break
+            if header_row != -1:
+                break
+
+        items = []
+        if header_row != -1:
+            for r_idx in range(header_row + 1, min(len(vals), header_row + 15)):
+                row = vals[r_idx]
+                if len(row) > name_col and row[name_col].strip():
+                    name = row[name_col].strip()
+                    val = row[val_col].strip() if len(row) > val_col else ""
+                    items.append({
+                        "row": r_idx + 1,
+                        "col": val_col + 1,
+                        "name": name,
+                        "value": val
+                    })
+                else:
+                    if len(items) > 0:
+                        break
+
+        return JSONResponse({"status": "ok", "data": items})
+    except Exception as e:
+        return JSONResponse({"status": "error", "message": str(e)})
+
+@app.post("/api/mandatory-payments")
+async def save_mandatory_payments(request: Request):
+    try:
+        payload = await request.json()
+        month_str = payload.get("month_str")
+        items = payload.get("items", [])
+
+        worksheet = find_worksheet(sh, month_str)
+        cells_to_update = []
+        for item in items:
+            row = int(item["row"])
+            col = int(item.get("col", 8))
+            val = str(item.get("value", "")).strip()
+            try:
+                num_val = float(val.replace(' ', '').replace(',', '.'))
+                val_to_save = int(num_val) if num_val.is_integer() else num_val
+            except ValueError:
+                val_to_save = val
+            cells_to_update.append(gspread.Cell(row=row, col=col, value=val_to_save))
+
+        if cells_to_update:
+            worksheet.update_cells(cells_to_update)
+
+        return JSONResponse({"status": "ok"})
+    except Exception as e:
+        return JSONResponse({"status": "error", "message": str(e)})
+
 @app.api_route("/ping", methods=["GET", "HEAD"])
 @app.api_route("/health", methods=["GET", "HEAD"])
 async def ping_check():

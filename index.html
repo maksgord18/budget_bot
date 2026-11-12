@@ -631,16 +631,18 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 6px;
             margin-top: 8px;
+            flex-wrap: wrap;
         }
 
         .today-chip,
-        .month-chip {
+        .month-chip,
+        .mandatory-chip {
             background: var(--pastel-blue);
             color: var(--text-blue);
             border: 1px solid rgba(21, 101, 192, 0.15);
-            padding: 6px 14px;
+            padding: 6px 12px;
             border-radius: 20px;
             font-size: 13px;
             font-weight: 600;
@@ -648,7 +650,7 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 5px;
+            gap: 4px;
             width: auto;
             height: auto;
             white-space: nowrap;
@@ -656,6 +658,17 @@
             font-family: inherit;
             box-shadow: none;
             transition: transform 0.12s, background 0.15s, opacity 0.15s;
+        }
+
+        .mandatory-chip {
+            background: #FFF8E1;
+            color: #E65100;
+            border-color: rgba(230, 81, 0, 0.2);
+        }
+
+        .mandatory-chip:active {
+            transform: scale(0.94);
+            background: #FFE082;
         }
 
         .today-chip:disabled {
@@ -1105,6 +1118,7 @@
                     <div class="header-chips">
                         <button id="btnToday" class="today-chip" onclick="goToToday()">📅 Сегодня</button>
                         <button class="month-chip" onclick="showPage('page-expense-months')">📅 Месяцы</button>
+                        <button class="mandatory-chip" onclick="openMandatoryPayments()">💳 Обязательные</button>
                     </div>
                 </div>
                 <button id="btnNext" onclick="changeDay(1)">›</button>
@@ -1130,6 +1144,24 @@
                 <span class="daily-total-val"><span id="dailyTotal">0</span> ₽</span>
             </div>
             <button class="save-btn" onclick="saveData()">💾 Сохранить день</button>
+        </div>
+
+        <!-- ОБЯЗАТЕЛЬНЫЕ ПЛАТЕЖИ -->
+        <div id="page-mandatory-payments" class="page">
+            <div class="header-controls">
+                <button onclick="showPage('page-expense-daily')">‹</button>
+                <div class="header-title-box">
+                    <span class="header-title" id="mandatoryTitle">Обязательные платежи</span>
+                    <span class="header-subtitle" id="mandatorySubtitle">Ноябрь 2026</span>
+                </div>
+                <div style="width:44px; height:44px;"></div>
+            </div>
+            <div id="mandatoryContainer" style="display:flex; flex-direction:column; gap:10px;">Загрузка...</div>
+            <div class="daily-total-card">
+                <span class="daily-total-label">Итого обязательных</span>
+                <span class="daily-total-val green"><span id="mandatoryTotal">0</span> ₽</span>
+            </div>
+            <button class="save-btn" onclick="saveMandatoryPayments()">💾 Сохранить платежи</button>
         </div>
 
         <!-- СТАТИСТИКА -->
@@ -1311,7 +1343,7 @@
                     tg.BackButton.show();
                     tg.BackButton.onClick(() => {
                         haptic('light');
-                        if (pageId === 'page-expense-months') showPage('page-expense-daily');
+                        if (pageId === 'page-expense-months' || pageId === 'page-mandatory-payments') showPage('page-expense-daily');
                         else if (pageId === 'page-income-months') showPage('page-income-form');
                         else if (pageId === 'page-statistics-months') showPage('page-statistics-view');
                         else showTab('main');
@@ -1770,27 +1802,13 @@
             let sortedCats = Object.keys(activeCatTotals).sort((a, b) => activeCatTotals[b] - activeCatTotals[a]);
             let chartLabels = [], chartData = [];
 
-            let chartColors = [];
-            if (currentStatFilter === 'maxim') {
-                chartColors = [
-                    '#1565C0', '#1976D2', '#1E88E5', '#2196F3', '#42A5F5', 
-                    '#64B5F6', '#90CAF9', '#0D47A1', '#0097A7', '#00ACC1', 
-                    '#26C6DA', '#00897B', '#43A047', '#5C6BC0', '#3949AB', '#283593', '#1A237E'
-                ];
-            } else if (currentStatFilter === 'yasya') {
-                chartColors = [
-                    '#D81B60', '#E91E63', '#EC407A', '#F06292', '#F48FB1', 
-                    '#AD1457', '#880E4F', '#BA68C8', '#AB47BC', '#9C27B0', 
-                    '#8E24AA', '#7B1FA2', '#FF4081', '#FF80AB', '#F8BBD0', '#CE93D8', '#E1BEE7'
-                ];
-            } else {
-                chartColors = [
-                    '#4CAF50', '#FF9800', '#2196F3', '#9C27B0', '#009688', 
-                    '#E91E63', '#795548', '#673AB7', '#F44336', '#EC407A', 
-                    '#FFC107', '#03A9F4', '#2E7D32', '#FF5722', '#7E57C2', 
-                    '#00BCD4', '#8BC34A'
-                ];
-            }
+            // Одинаковые яркие цвета категорий для всех 3 режимов (Вместе, Максим, Яся)
+            const chartColors = [
+                '#4CAF50', '#FF9800', '#2196F3', '#9C27B0', '#009688', 
+                '#E91E63', '#795548', '#673AB7', '#F44336', '#EC407A', 
+                '#FFC107', '#03A9F4', '#2E7D32', '#FF5722', '#7E57C2', 
+                '#00BCD4', '#8BC34A'
+            ];
 
             // 6. Формирование списка категорий со сплит-разбивкой
             let listHtml = '';
@@ -1818,7 +1836,7 @@
                         }
                     }
 
-                    let amountColor = (currentStatFilter === 'maxim') ? '#1565C0' : ((currentStatFilter === 'yasya') ? '#D81B60' : 'var(--text-main)');
+                    let amountColor = 'var(--text-main)';
 
                     listHtml += `<div class="category-row">
                         <div class="category-left">
@@ -1987,6 +2005,136 @@
                 showToast('Ошибка сети при сохранении', true);
             } finally {
                 btn.innerText = "💾 Сохранить доходы";
+            }
+        }
+
+        // ================= ОБЯЗАТЕЛЬНЫЕ ПЛАТЕЖИ =================
+        let currentMandatoryMonth = '';
+        window.currentMandatoryData = [];
+
+        function getMandatoryIcon(name) {
+            const l = (name || '').toLowerCase();
+            if (l.includes('аренд') || l.includes('квартир')) return { icon: '🏠', bg: '#E0F7FA', color: '#006064' };
+            if (l.includes('жкх') || l.includes('коммун')) return { icon: '💡', bg: '#FFFDE7', color: '#F57F17' };
+            if (l.includes('интернет') || l.includes('wi-fi')) return { icon: '🌐', bg: '#E3F2FD', color: '#1565C0' };
+            if (l.includes('репетитор') || l.includes('учеб') || l.includes('курс')) return { icon: '👨‍🏫', bg: '#EDE7F6', color: '#5E35B1' };
+            if (l.includes('связь') || l.includes('телефон') || l.includes('моб')) return { icon: '📱', bg: '#E0F2F1', color: '#00695C' };
+            return { icon: '💳', bg: '#F3E5F5', color: '#7B1FA2' };
+        }
+
+        async function openMandatoryPayments() {
+            haptic('medium');
+            const mIdx = (typeof selectedMonthIndex !== 'undefined') ? selectedMonthIndex : new Date().getMonth();
+            const y = (typeof selectedYear !== 'undefined') ? selectedYear : 2026;
+            const monthStr = `${monthsRu[mIdx]} ${y}`;
+            currentMandatoryMonth = monthStr;
+
+            const subEl = document.getElementById('mandatorySubtitle');
+            if (subEl) {
+                const formatted = monthsRu[mIdx].charAt(0).toUpperCase() + monthsRu[mIdx].slice(1) + ' ' + y;
+                subEl.innerText = formatted;
+            }
+
+            showPage('page-mandatory-payments');
+            const container = document.getElementById('mandatoryContainer');
+            container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Загрузка...</div>';
+
+            try {
+                const res = await fetch(`/api/mandatory-payments?month=${encodeURIComponent(monthStr)}`);
+                const json = await res.json();
+                if (json.status === 'ok' && json.data && json.data.length > 0) {
+                    window.currentMandatoryData = json.data;
+                    let html = '';
+                    json.data.forEach(item => {
+                        const iconInfo = getMandatoryIcon(item.name);
+                        html += `<div class="category-row">
+                            <div class="category-left">
+                                <div class="category-icon-box" style="background:${iconInfo.bg}; color:${iconInfo.color}; font-size:18px;">${iconInfo.icon}</div>
+                                <span class="category-name">${item.name}</span>
+                            </div>
+                            <div class="category-input-wrap">
+                                <input type="text" id="mand_${item.row}" class="category-input" value="${item.value || ''}" placeholder="0" oninput="calculateMandatoryTotal()" style="width:125px; font-size:15px; font-weight:700;">
+                                <span class="currency-symbol">₽</span>
+                            </div>
+                        </div>`;
+                    });
+                    container.innerHTML = html;
+                    calculateMandatoryTotal();
+                } else if (json.status === 'ok' && (!json.data || json.data.length === 0)) {
+                    container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:30px;">Обязательные платежи не найдены в таблице</div>';
+                    const tEl = document.getElementById('mandatoryTotal');
+                    if (tEl) tEl.innerText = '0';
+                } else {
+                    container.innerHTML = '<div style="text-align:center; color:var(--text-red); padding:20px;">Ошибка: ' + (json.message || 'Не удалось загрузить') + '</div>';
+                }
+            } catch (e) {
+                container.innerHTML = '<div style="text-align:center; color:var(--text-red); padding:20px;">Ошибка сети</div>';
+            }
+        }
+
+        function calculateMandatoryTotal() {
+            let totalMin = 0;
+            let totalMax = 0;
+            let hasRange = false;
+
+            if (window.currentMandatoryData) {
+                window.currentMandatoryData.forEach(item => {
+                    const el = document.getElementById('mand_' + item.row);
+                    if (el && el.value) {
+                        const v = el.value.trim().replace(/\s/g, '');
+                        if (v.includes('-')) {
+                            const parts = v.split('-');
+                            const p0 = parseFloat(parts[0].replace(',', '.')) || 0;
+                            const p1 = parseFloat(parts[1].replace(',', '.')) || 0;
+                            totalMin += p0;
+                            totalMax += p1;
+                            hasRange = true;
+                        } else {
+                            const num = parseFloat(v.replace(',', '.')) || 0;
+                            totalMin += num;
+                            totalMax += num;
+                        }
+                    }
+                });
+            }
+
+            const totalEl = document.getElementById('mandatoryTotal');
+            if (totalEl) {
+                if (hasRange) {
+                    totalEl.innerText = `${totalMin.toLocaleString('ru-RU')} – ${totalMax.toLocaleString('ru-RU')}`;
+                } else {
+                    totalEl.innerText = totalMin.toLocaleString('ru-RU');
+                }
+            }
+        }
+
+        async function saveMandatoryPayments() {
+            if (!window.currentMandatoryData) return;
+            haptic('medium');
+            const btn = document.querySelector('#page-mandatory-payments .save-btn');
+            btn.innerText = "⏳ Сохранение...";
+            const items = [];
+            window.currentMandatoryData.forEach(item => {
+                const el = document.getElementById('mand_' + item.row);
+                items.push({ row: item.row, col: item.col, value: el ? el.value : item.value });
+            });
+
+            try {
+                const res = await fetch('/api/mandatory-payments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ month_str: currentMandatoryMonth, items: items })
+                });
+                const resJson = await res.json();
+                if (resJson.status === 'ok') {
+                    showToast('Обязательные платежи сохранены!');
+                } else {
+                    showToast(resJson.message || 'Ошибка сохранения', true);
+                }
+            } catch (e) {
+                showToast('Ошибка сети при сохранении', true);
+            } finally {
+                btn.innerText = "💾 Сохранить платежи";
             }
         }
 
