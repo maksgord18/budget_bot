@@ -233,18 +233,19 @@
             padding: 3px;
             border-radius: 14px;
             width: 100%;
-            max-width: 320px;
+            max-width: 100%;
             box-sizing: border-box;
             gap: 2px;
         }
 
         .user-toggle-item {
-            flex: 1;
+            flex: 1 1 50%;
+            width: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 6px;
-            padding: 9px 16px;
+            padding: 10px 16px;
             border: none;
             background: transparent;
             border-radius: 11px;
@@ -280,7 +281,7 @@
             padding: 3px;
             border-radius: 14px;
             width: 100%;
-            max-width: 360px;
+            max-width: 100%;
             gap: 3px;
             box-sizing: border-box;
         }
@@ -905,6 +906,76 @@
             font-weight: 600;
         }
 
+        /* УБИРАЕМ СТРЕЛКИ СПИННЕРА ДЛЯ ЧИСЛОВЫХ ПОЛЕЙ */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        /* ОБЯЗАТЕЛЬНЫЕ ПЛАТЕЖИ: ЧЕКБОКСЫ И СТАТУСЫ */
+        .mandatory-row {
+            transition: all 0.2s ease;
+        }
+
+        .mandatory-check-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding-right: 8px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .mandatory-checkbox {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid #CBD5E1;
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 800;
+            color: #FFFFFF;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            flex-shrink: 0;
+            user-select: none;
+        }
+
+        .mandatory-checkbox.checked {
+            background: #10B981;
+            border-color: #10B981;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+            transform: scale(1.05);
+        }
+
+        .mandatory-paid-badge {
+            display: inline-block;
+            font-size: 10.5px;
+            font-weight: 700;
+            color: #059669;
+            background: #D1FAE5;
+            padding: 2px 7px;
+            border-radius: 8px;
+            margin-top: 2px;
+            letter-spacing: 0.2px;
+            width: fit-content;
+        }
+
+        .mandatory-row.paid {
+            background: #F0FDF4;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .mandatory-row.paid .category-name {
+            color: #1E293B;
+        }
+
         /* КАРТОЧКА ИТОГО ЗА ДЕНЬ / МЕСЯЦ */
         .daily-total-card {
             display: flex;
@@ -1107,7 +1178,7 @@
                         <span class="quick-select-arrow">▾</span>
                     </div>
                     <div class="quick-amount-wrap">
-                        <input type="number" id="quickAmountInput" class="quick-amount-input" placeholder="0" inputmode="decimal" oninput="onQuickAmountInput()" onkeydown="if(event.key==='Enter') submitQuickExpense()">
+                        <input type="text" id="quickAmountInput" class="quick-amount-input" placeholder="0" inputmode="decimal" oninput="onQuickAmountInput()" onkeydown="if(event.key==='Enter') submitQuickExpense()">
                         <span class="quick-currency">₽</span>
                     </div>
                 </div>
@@ -1199,9 +1270,15 @@
                 <div style="width:44px; height:44px;"></div>
             </div>
             <div id="mandatoryContainer" style="display:flex; flex-direction:column; gap:10px;">Загрузка...</div>
-            <div class="daily-total-card">
-                <span class="daily-total-label">Итого обязательных</span>
-                <span class="daily-total-val green"><span id="mandatoryTotal">0</span> ₽</span>
+            <div class="daily-total-card" style="flex-direction:column; align-items:stretch; gap:6px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span class="daily-total-label">Итого обязательных</span>
+                    <span class="daily-total-val green"><span id="mandatoryTotal">0</span> ₽</span>
+                </div>
+                <div id="mandatoryPaidSubtext" style="display:flex; justify-content:space-between; align-items:center; font-size:12.5px; color:var(--text-muted); border-top:1px solid rgba(0,0,0,0.06); padding-top:6px; margin-top:2px;">
+                    <span>Оплачено: <strong id="mandatoryPaidAmount" style="color:#10B981;">0 ₽</strong></span>
+                    <span id="mandatoryProgressText">0 из 0 оплачено</span>
+                </div>
             </div>
             <button class="save-btn" onclick="saveMandatoryPayments()">💾 Сохранить платежи</button>
         </div>
@@ -1544,7 +1621,29 @@
             updateQuickSubmitButtonText();
         }
 
+        function formatMoney(amount) {
+            const num = parseFloat(amount) || 0;
+            if (num % 1 !== 0) {
+                return num.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+            return num.toLocaleString('ru-RU');
+        }
+
+        function sanitizeDecimalInput(input) {
+            let val = input.value.replace(/[^0-9.,]/g, '').replace('.', ',');
+            const parts = val.split(',');
+            if (parts.length > 2) {
+                val = parts[0] + ',' + parts.slice(1).join('');
+            }
+            if (input.value !== val) {
+                input.value = val;
+            }
+            return val;
+        }
+
         function onQuickAmountInput() {
+            const input = document.getElementById('quickAmountInput');
+            if (input) sanitizeDecimalInput(input);
             updateQuickSubmitButtonText();
         }
 
@@ -1555,15 +1654,15 @@
             if (!btnText || !select || !input) return;
 
             const catKey = select.value;
-            const inputVal = parseFloat(input.value) || 0;
+            const inputVal = parseFloat(input.value.replace(',', '.')) || 0;
             const currentToday = parseFloat(todayExpensesMap[catKey]) || 0;
 
             if (inputVal > 0) {
                 if (currentToday > 0) {
                     const total = currentToday + inputVal;
-                    btnText.innerText = `✓ Добавить +${inputVal.toLocaleString('ru-RU')} ₽ (станет ${total.toLocaleString('ru-RU')} ₽)`;
+                    btnText.innerText = `✓ Добавить +${formatMoney(inputVal)} ₽ (станет ${formatMoney(total)} ₽)`;
                 } else {
-                    btnText.innerText = `✓ Записать ${inputVal.toLocaleString('ru-RU')} ₽`;
+                    btnText.innerText = `✓ Записать ${formatMoney(inputVal)} ₽`;
                 }
             } else {
                 btnText.innerText = '✓ Записать расход';
@@ -1578,7 +1677,7 @@
             const feedback = document.getElementById('quickFeedback');
 
             const catKey = select.value;
-            const amount = parseFloat(input.value);
+            const amount = parseFloat(input.value.replace(',', '.'));
 
             if (!amount || amount <= 0) {
                 input.focus();
@@ -1976,11 +2075,16 @@
                 window.currentIncomeData.forEach(item => {
                     const el = document.getElementById('inc_' + item.row);
                     if (el && el.value) {
-                        total += parseFloat(el.value) || 0;
+                        total += parseFloat(el.value.replace(',', '.')) || 0;
                     }
                 });
             }
-            document.getElementById('incomeTotal').innerText = total.toLocaleString('ru-RU');
+            document.getElementById('incomeTotal').innerText = formatMoney(total);
+        }
+
+        function onIncomeInput(input, row) {
+            sanitizeDecimalInput(input);
+            calculateIncomeTotal();
         }
 
         async function openIncome(monthStr) {
@@ -2011,6 +2115,7 @@
                         const tagHtml = getPersonTag(item.name);
                         const amt = parseFloat(item.amount) || 0;
                         totalInc += amt;
+                        const displayAmt = item.amount ? String(item.amount).replace('.', ',') : '';
                         html += `<div class="category-row">
                             <div class="category-left">
                                 <div class="category-icon-box" style="background:${iconData.bg}; color:${iconData.color};">${iconData.icon}</div>
@@ -2020,14 +2125,14 @@
                                 </div>
                             </div>
                             <div class="category-input-wrap">
-                                <input type="number" id="inc_${item.row}" class="category-input" value="${item.amount}" placeholder="0" inputmode="numeric" oninput="calculateIncomeTotal()">
+                                <input type="text" id="inc_${item.row}" class="category-input" value="${displayAmt}" placeholder="0" inputmode="decimal" oninput="onIncomeInput(this, ${item.row})">
                                 <span class="currency-symbol">₽</span>
                             </div>
                         </div>`;
                     });
                     document.getElementById('incomeContainer').innerHTML = html;
                     window.currentIncomeData = json.data;
-                    document.getElementById('incomeTotal').innerText = totalInc.toLocaleString('ru-RU');
+                    document.getElementById('incomeTotal').innerText = formatMoney(totalInc);
                 } else if (json.status === "sheet_not_found" || json.sheet_exists === false) {
                     if (incSaveBtn) incSaveBtn.style.display = 'none';
                     if (incTotalCard) incTotalCard.style.display = 'none';
@@ -2070,7 +2175,9 @@
             btn.innerText = "⏳ Сохранение...";
             const items = [];
             window.currentIncomeData.forEach(item => {
-                items.push({ row: item.row, amount: document.getElementById('inc_' + item.row).value });
+                const el = document.getElementById('inc_' + item.row);
+                const v = el ? el.value.replace(',', '.').trim() : '';
+                items.push({ row: item.row, amount: v });
             });
             try {
                 const res = await fetch('/api/income', {
@@ -2132,21 +2239,7 @@
                     if (mandSaveBtn) mandSaveBtn.style.display = 'block';
                     if (mandTotalCard) mandTotalCard.style.display = 'flex';
                     window.currentMandatoryData = json.data;
-                    let html = '';
-                    json.data.forEach(item => {
-                        const iconInfo = getMandatoryIcon(item.name);
-                        html += `<div class="category-row">
-                            <div class="category-left">
-                                <div class="category-icon-box" style="background:${iconInfo.bg}; color:${iconInfo.color}; font-size:18px;">${iconInfo.icon}</div>
-                                <span class="category-name">${item.name}</span>
-                            </div>
-                            <div class="category-input-wrap">
-                                <input type="text" id="mand_${item.row}" class="category-input" value="${item.value || ''}" placeholder="0" oninput="calculateMandatoryTotal()" style="width:125px; font-size:15px; font-weight:700;">
-                                <span class="currency-symbol">₽</span>
-                            </div>
-                        </div>`;
-                    });
-                    container.innerHTML = html;
+                    renderMandatoryList();
                     calculateMandatoryTotal();
                 } else if (json.status === 'sheet_not_found' || json.sheet_exists === false) {
                     if (mandSaveBtn) mandSaveBtn.style.display = 'none';
@@ -2177,28 +2270,95 @@
             }
         }
 
+        function renderMandatoryList() {
+            const container = document.getElementById('mandatoryContainer');
+            if (!window.currentMandatoryData) return;
+            let html = '';
+            window.currentMandatoryData.forEach(item => {
+                const iconInfo = getMandatoryIcon(item.name);
+                const isPaid = !!item.is_paid;
+                html += `
+                <div class="category-row mandatory-row ${isPaid ? 'paid' : ''}" id="mand_row_${item.row}">
+                    <div class="mandatory-check-wrap" onclick="toggleMandatoryPaid(${item.row})">
+                        <div class="mandatory-checkbox ${isPaid ? 'checked' : ''}" id="mand_chk_${item.row}">
+                            ${isPaid ? '✓' : ''}
+                        </div>
+                    </div>
+                    <div class="category-left" onclick="toggleMandatoryPaid(${item.row})" style="cursor:pointer; flex:1; min-width:0;">
+                        <div class="category-icon-box" style="background:${iconInfo.bg}; color:${iconInfo.color}; font-size:18px;">${iconInfo.icon}</div>
+                        <div class="category-text-wrap">
+                            <span class="category-name" id="mand_name_${item.row}">${item.name}</span>
+                            <span id="mand_badge_${item.row}">${isPaid ? '<span class="mandatory-paid-badge">✓ Оплачено</span>' : ''}</span>
+                        </div>
+                    </div>
+                    <div class="category-input-wrap">
+                        <input type="text" id="mand_${item.row}" class="category-input" value="${item.value || ''}" placeholder="0" inputmode="decimal" oninput="calculateMandatoryTotal()" style="width:115px; font-size:15px; font-weight:700;">
+                        <span class="currency-symbol">₽</span>
+                    </div>
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        async function toggleMandatoryPaid(row) {
+            haptic('selection');
+            if (!window.currentMandatoryData) return;
+            const item = window.currentMandatoryData.find(x => x.row === row);
+            if (!item) return;
+
+            item.is_paid = !item.is_paid;
+            const isPaid = item.is_paid;
+
+            const rowEl = document.getElementById(`mand_row_${row}`);
+            const chkEl = document.getElementById(`mand_chk_${row}`);
+            const badgeEl = document.getElementById(`mand_badge_${row}`);
+
+            if (rowEl) rowEl.classList.toggle('paid', isPaid);
+            if (chkEl) {
+                chkEl.classList.toggle('checked', isPaid);
+                chkEl.innerText = isPaid ? '✓' : '';
+            }
+            if (badgeEl) {
+                badgeEl.innerHTML = isPaid ? '<span class="mandatory-paid-badge">✓ Оплачено</span>' : '';
+            }
+
+            calculateMandatoryTotal();
+            saveMandatoryPayments(true);
+        }
+
         function calculateMandatoryTotal() {
             let totalMin = 0;
             let totalMax = 0;
+            let paidTotal = 0;
+            let paidCount = 0;
+            let totalCount = 0;
             let hasRange = false;
 
             if (window.currentMandatoryData) {
+                totalCount = window.currentMandatoryData.length;
                 window.currentMandatoryData.forEach(item => {
                     const el = document.getElementById('mand_' + item.row);
+                    const isPaid = !!item.is_paid;
+                    if (isPaid) paidCount++;
+
+                    let valMin = 0, valMax = 0;
                     if (el && el.value) {
                         const v = el.value.trim().replace(/\s/g, '');
                         if (v.includes('-')) {
                             const parts = v.split('-');
-                            const p0 = parseFloat(parts[0].replace(',', '.')) || 0;
-                            const p1 = parseFloat(parts[1].replace(',', '.')) || 0;
-                            totalMin += p0;
-                            totalMax += p1;
+                            valMin = parseFloat(parts[0].replace(',', '.')) || 0;
+                            valMax = parseFloat(parts[1].replace(',', '.')) || 0;
                             hasRange = true;
                         } else {
                             const num = parseFloat(v.replace(',', '.')) || 0;
-                            totalMin += num;
-                            totalMax += num;
+                            valMin = num;
+                            valMax = num;
                         }
+                    }
+                    totalMin += valMin;
+                    totalMax += valMax;
+                    if (isPaid) {
+                        paidTotal += valMax;
                     }
                 });
             }
@@ -2206,22 +2366,33 @@
             const totalEl = document.getElementById('mandatoryTotal');
             if (totalEl) {
                 if (hasRange) {
-                    totalEl.innerText = `${totalMin.toLocaleString('ru-RU')} – ${totalMax.toLocaleString('ru-RU')}`;
+                    totalEl.innerText = `${formatMoney(totalMin)} – ${formatMoney(totalMax)}`;
                 } else {
-                    totalEl.innerText = totalMin.toLocaleString('ru-RU');
+                    totalEl.innerText = formatMoney(totalMin);
                 }
             }
+
+            const paidEl = document.getElementById('mandatoryPaidAmount');
+            if (paidEl) paidEl.innerText = formatMoney(paidTotal) + ' ₽';
+            const progEl = document.getElementById('mandatoryProgressText');
+            if (progEl) progEl.innerText = `${paidCount} из ${totalCount} оплачено`;
         }
 
-        async function saveMandatoryPayments() {
+        async function saveMandatoryPayments(silent = false) {
             if (!window.currentMandatoryData) return;
-            haptic('medium');
+            if (!silent) haptic('medium');
             const btn = document.querySelector('#page-mandatory-payments .save-btn');
-            btn.innerText = "⏳ Сохранение...";
+            if (!silent && btn) btn.innerText = "⏳ Сохранение...";
             const items = [];
             window.currentMandatoryData.forEach(item => {
                 const el = document.getElementById('mand_' + item.row);
-                items.push({ row: item.row, col: item.col, value: el ? el.value : item.value });
+                items.push({ 
+                    row: item.row, 
+                    col: item.col, 
+                    status_col: item.status_col || (item.col + 1),
+                    value: el ? el.value : item.value,
+                    is_paid: !!item.is_paid
+                });
             });
 
             try {
@@ -2232,14 +2403,14 @@
                 });
                 const resJson = await res.json();
                 if (resJson.status === 'ok') {
-                    showToast('Обязательные платежи сохранены!');
+                    if (!silent) showToast('Обязательные платежи сохранены!');
                 } else {
-                    showToast(resJson.message || 'Ошибка сохранения', true);
+                    if (!silent) showToast(resJson.message || 'Ошибка сохранения', true);
                 }
             } catch (e) {
-                showToast('Ошибка сети при сохранении', true);
+                if (!silent) showToast('Ошибка сети при сохранении', true);
             } finally {
-                btn.innerText = "💾 Сохранить платежи";
+                if (!silent && btn) btn.innerText = "💾 Сохранить платежи";
             }
         }
 
@@ -2398,24 +2569,30 @@
                         <span class="category-name">${cat.name}</span>
                     </div>
                     <div class="category-input-wrap">
-                        <input type="number" id="cat_${key}" class="category-input" placeholder="0" inputmode="numeric" oninput="onInputChanged()">
+                        <input type="text" id="cat_${key}" class="category-input" placeholder="0" inputmode="decimal" oninput="onExpenseInput(this, '${key}')">
                         <span class="currency-symbol">₽</span>
                     </div>
                 </div>`;
             }
         }
 
-        function onInputChanged() {
+        function onExpenseInput(input, key) {
+            const val = sanitizeDecimalInput(input);
             if (!currentMonthData[selectedDay]) currentMonthData[selectedDay] = {};
+            currentMonthData[selectedDay][key] = val.replace(',', '.');
+            calculateDailyTotal();
+        }
+
+        function calculateDailyTotal() {
             let total = 0;
             for (let key in categories) {
                 let el = document.getElementById('cat_' + key);
-                if (el) {
-                    currentMonthData[selectedDay][key] = el.value;
-                    if (el.value) total += parseFloat(el.value) || 0;
+                if (el && el.value) {
+                    const num = parseFloat(el.value.replace(',', '.')) || 0;
+                    total += num;
                 }
             }
-            document.getElementById('dailyTotal').innerText = total.toLocaleString('ru-RU');
+            document.getElementById('dailyTotal').innerText = formatMoney(total);
         }
 
         function changeDay(delta) {
@@ -2456,11 +2633,12 @@
             for (let key in categories) {
                 let input = document.getElementById('cat_' + key);
                 if (input) {
-                    input.value = dayData[key] || '';
-                    if (input.value) total += parseFloat(input.value) || 0;
+                    const rawVal = dayData[key] !== undefined && dayData[key] !== null ? String(dayData[key]) : '';
+                    input.value = rawVal ? rawVal.replace('.', ',') : '';
+                    if (rawVal) total += parseFloat(rawVal.replace(',', '.')) || 0;
                 }
             }
-            document.getElementById('dailyTotal').innerText = total.toLocaleString('ru-RU');
+            document.getElementById('dailyTotal').innerText = formatMoney(total);
             document.getElementById('btnPrev').disabled = (selectedDay === 1);
             document.getElementById('btnNext').disabled = (selectedDay === currentNumDays);
         }
@@ -2470,12 +2648,17 @@
             const btn = document.querySelector('#page-expense-daily .save-btn');
             btn.innerText = "⏳ Сохранение...";
             const dayData = currentMonthData[selectedDay] || {};
+            const cleanDayData = {};
+            for (let k in dayData) {
+                cleanDayData[k] = String(dayData[k]).replace(',', '.').trim();
+            }
+
             try {
                 const response = await fetch('/api/day', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         date: `${selectedYear}-${String(selectedMonthIndex + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`,
-                        data: dayData,
+                        data: cleanDayData,
                         user: currentUser
                     })
                 });
@@ -2496,6 +2679,18 @@
                 btn.innerText = "💾 Сохранить день";
             }
         }
+
+        // ================= ЗАКРЫТИЕ КЛАВИАТУРЫ ПО ТАПУ ВНЕ ПОЛЕЙ =================
+        function handleDismissKeyboard(e) {
+            const active = document.activeElement;
+            if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+                if (e.target !== active && !e.target.closest('input, textarea, select, button, .category-input-wrap, .quick-amount-wrap, .save-btn, .today-chip, .month-chip, .mandatory-chip, .user-toggle-item, .nav-item, .mandatory-check-wrap')) {
+                    active.blur();
+                }
+            }
+        }
+        document.addEventListener('touchstart', handleDismissKeyboard, { passive: true });
+        document.addEventListener('mousedown', handleDismissKeyboard);
 
     </script>
 </body>

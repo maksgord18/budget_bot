@@ -499,11 +499,16 @@ async def get_mandatory_payments(month: str):
                 if len(row) > name_col and row[name_col].strip():
                     name = row[name_col].strip()
                     val = row[val_col].strip() if len(row) > val_col else ""
+                    status_col_idx = val_col + 1
+                    status_raw = row[status_col_idx].strip() if len(row) > status_col_idx else ""
+                    is_paid = status_raw.lower() in ["оплачено", "true", "да", "1", "v", "✓"]
                     items.append({
                         "row": r_idx + 1,
                         "col": val_col + 1,
+                        "status_col": status_col_idx + 1,
                         "name": name,
-                        "value": val
+                        "value": val,
+                        "is_paid": is_paid
                     })
                 else:
                     if len(items) > 0:
@@ -529,13 +534,19 @@ async def save_mandatory_payments(request: Request):
         for item in items:
             row = int(item["row"])
             col = int(item.get("col", 8))
+            status_col = int(item.get("status_col", col + 1))
             val = str(item.get("value", "")).strip()
+            is_paid = bool(item.get("is_paid", False))
+
             try:
                 num_val = float(val.replace(' ', '').replace(',', '.'))
                 val_to_save = int(num_val) if num_val.is_integer() else num_val
             except ValueError:
                 val_to_save = val
             cells_to_update.append(gspread.Cell(row=row, col=col, value=val_to_save))
+
+            status_val = "Оплачено" if is_paid else ""
+            cells_to_update.append(gspread.Cell(row=row, col=status_col, value=status_val))
 
         if cells_to_update:
             worksheet.update_cells(cells_to_update)
@@ -646,6 +657,7 @@ async def create_month_sheet(request: Request):
 
         clear_ranges.append("D59:D60")
         clear_ranges.append("E65:E71")
+        clear_ranges.append("I65:I71")
 
         new_ws.batch_clear(clear_ranges)
 
