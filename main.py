@@ -4,6 +4,7 @@ import asyncio
 import uvicorn
 import gspread
 import calendar
+import urllib.parse
 from datetime import datetime
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -24,6 +25,42 @@ else:
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 app = FastAPI()
+
+APP_PASSWORD = os.getenv("APP_PASSWORD", "Лира-квартира").strip()
+
+def is_valid_password(p: str) -> bool:
+    if not p:
+        return False
+    norm_p = urllib.parse.unquote(str(p)).strip().lower().replace('—', '-').replace('–', '-').replace('−', '-')
+    norm_target = APP_PASSWORD.strip().lower().replace('—', '-').replace('–', '-').replace('−', '-')
+    return norm_p == norm_target
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    path = request.url.path
+    # Разрешаем веб-интерфейс, статику, health checks и проверку пароля
+    if path in ["/", "/ping", "/health", "/favicon.ico", "/api/auth/verify"] or not path.startswith("/api/"):
+        return await call_next(request)
+    
+    header_pass = request.headers.get("X-App-Password", "")
+    query_pass = request.query_params.get("auth_token", "")
+    
+    if not is_valid_password(header_pass) and not is_valid_password(query_pass):
+        return JSONResponse({"status": "unauthorized", "message": "Требуется авторизация"}, status_code=401)
+    
+    return await call_next(request)
+
+@app.post("/api/auth/verify")
+async def verify_auth(request: Request):
+    try:
+        body = await request.json()
+        pwd = str(body.get("password", ""))
+    except Exception:
+        pwd = ""
+    
+    if is_valid_password(pwd):
+        return JSONResponse({"status": "ok", "message": "Авторизован"})
+    return JSONResponse({"status": "error", "message": "Неверный пароль"}, status_code=401)
 
 # Подключение к Google Таблицам: из переменной GOOGLE_CREDENTIALS или локального credentials.json
 google_creds_json = os.getenv("GOOGLE_CREDENTIALS")

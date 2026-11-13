@@ -1146,6 +1146,165 @@
             transform: translateX(-50%) translateY(0);
             opacity: 1;
         }
+
+        /* ЭКРАН АВТОРИЗАЦИИ */
+        .auth-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999999;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .auth-card {
+            background: var(--card-bg);
+            border-radius: 28px;
+            padding: 36px 24px 28px 24px;
+            width: 100%;
+            max-width: 340px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+            border: 1px solid var(--border-color);
+            animation: authPop 0.28s ease-out;
+            box-sizing: border-box;
+        }
+
+        @keyframes authPop {
+            from {
+                opacity: 0;
+                transform: scale(0.92);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .auth-icon {
+            font-size: 50px;
+            margin-bottom: 12px;
+            line-height: 1;
+        }
+
+        .auth-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-main);
+            letter-spacing: -0.3px;
+            margin-bottom: 6px;
+        }
+
+        .auth-subtitle {
+            font-size: 13.5px;
+            color: var(--text-muted);
+            line-height: 1.4;
+            margin-bottom: 22px;
+        }
+
+        .auth-input-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+            background: #F4F4F6;
+            border: 1.5px solid transparent;
+            border-radius: 16px;
+            padding: 4px 12px;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+        }
+
+        .auth-input-wrap:focus-within {
+            border-color: #007AFF;
+            background: #FFFFFF;
+            box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.12);
+        }
+
+        .auth-input-wrap.error {
+            border-color: #E53935;
+            background: #FFF5F5;
+            animation: authShake 0.35s ease;
+        }
+
+        @keyframes authShake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+        }
+
+        .auth-input {
+            width: 100%;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: 16px;
+            font-family: inherit;
+            color: var(--text-main);
+            padding: 10px 4px;
+        }
+
+        .auth-eye-btn {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 6px;
+            opacity: 0.6;
+            transition: opacity 0.15s;
+        }
+
+        .auth-eye-btn:active {
+            opacity: 1;
+        }
+
+        .auth-error-msg {
+            color: #E53935;
+            font-size: 13px;
+            font-weight: 600;
+            min-height: 20px;
+            margin-top: 8px;
+            margin-bottom: 8px;
+            display: none;
+        }
+
+        .auth-submit-btn {
+            background: #007AFF;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 16px;
+            padding: 14px 20px;
+            font-size: 16px;
+            font-weight: 700;
+            width: 100%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 10px;
+            box-shadow: 0 4px 14px rgba(0, 122, 255, 0.28);
+            transition: transform 0.12s, background 0.15s;
+            font-family: inherit;
+        }
+
+        .auth-submit-btn:active {
+            transform: scale(0.97);
+            background: #0062CC;
+        }
+
+        .auth-submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
     </style>
 </head>
 
@@ -1215,6 +1374,11 @@
                 </button>
 
                 <div id="quickFeedback" class="quick-feedback"></div>
+            </div>
+
+            <!-- КНОПКА СМЕНЫ ПАРОЛЯ / ВЫХОДА -->
+            <div style="text-align: center; margin-top: 10px; margin-bottom: 4px;">
+                <button type="button" onclick="logoutAuth()" style="background:none; border:none; color:var(--text-muted); font-size:12px; cursor:pointer; padding:6px 12px; border-radius:12px; font-family:inherit;">🔒 Выйти / Сменить пароль</button>
             </div>
         </div>
 
@@ -1387,6 +1551,27 @@
         </button>
     </div>
 
+    <!-- ЭКРАН ВХОДА (ЕДИНОРАЗОВЫЙ ВВОД ПАРОЛЯ) -->
+    <div id="auth-overlay" class="auth-overlay" style="display: none;">
+        <div class="auth-card">
+            <div class="auth-icon">🔐</div>
+            <div class="auth-title">Семейный Бюджет</div>
+            <div class="auth-subtitle">Введите пароль для доступа к бюджету</div>
+            
+            <div class="auth-input-wrap">
+                <input type="password" id="authPasswordInput" class="auth-input" placeholder="Пароль" autocomplete="current-password" autocorrect="off" autocapitalize="none">
+                <button type="button" class="auth-eye-btn" onclick="toggleAuthPasswordVisibility()" aria-label="Показать пароль">👁️</button>
+            </div>
+            
+            <div id="authErrorMsg" class="auth-error-msg"></div>
+            
+            <button type="button" id="authSubmitBtn" class="auth-submit-btn" onclick="submitAuth()">
+                <span>Войти</span>
+                <span style="font-size: 16px;">➔</span>
+            </button>
+        </div>
+    </div>
+
     <!-- ВСПЛЫВАЮЩИЙ TOAST -->
     <div id="toast" class="toast"></div>
 
@@ -1457,6 +1642,144 @@
             window.toastTimer = setTimeout(() => {
                 toast.classList.remove('show');
             }, 2200);
+        }
+
+        // ================= АВТОРИЗАЦИЯ И ЗАЩИТА ЗАПРОСОВ =================
+        const originalFetch = window.fetch;
+        window.fetch = async function(url, options = {}) {
+            options = options || {};
+            options.headers = options.headers || {};
+            const pass = localStorage.getItem('budget_app_password') || '';
+            if (pass) {
+                const encodedPass = encodeURIComponent(pass);
+                if (typeof options.headers.set === 'function') {
+                    options.headers.set('X-App-Password', encodedPass);
+                } else if (Array.isArray(options.headers)) {
+                    options.headers.push(['X-App-Password', encodedPass]);
+                } else {
+                    options.headers['X-App-Password'] = encodedPass;
+                }
+            }
+            
+            const response = await originalFetch(url, options);
+            if (response.status === 401 && String(url).includes('/api/') && !String(url).includes('/api/auth/verify')) {
+                localStorage.removeItem('budget_app_password');
+                showAuthOverlay("Пароль устарел или неверен. Введите пароль снова.");
+            }
+            return response;
+        };
+
+        function checkAuthOnStartup() {
+            const saved = localStorage.getItem('budget_app_password');
+            if (!saved) {
+                showAuthOverlay();
+                return false;
+            }
+            hideAuthOverlay();
+            return true;
+        }
+
+        function showAuthOverlay(customError = '') {
+            const overlay = document.getElementById('auth-overlay');
+            if (overlay) overlay.style.display = 'flex';
+            const errEl = document.getElementById('authErrorMsg');
+            if (errEl) {
+                if (customError) {
+                    errEl.innerText = customError;
+                    errEl.style.display = 'block';
+                } else {
+                    errEl.style.display = 'none';
+                }
+            }
+            const input = document.getElementById('authPasswordInput');
+            if (input) {
+                input.value = '';
+                setTimeout(() => input.focus(), 250);
+            }
+        }
+
+        function hideAuthOverlay() {
+            const overlay = document.getElementById('auth-overlay');
+            if (overlay) overlay.style.display = 'none';
+        }
+
+        function toggleAuthPasswordVisibility() {
+            const input = document.getElementById('authPasswordInput');
+            const btn = document.querySelector('.auth-eye-btn');
+            if (!input) return;
+            if (input.type === 'password') {
+                input.type = 'text';
+                if (btn) btn.innerText = '🙈';
+            } else {
+                input.type = 'password';
+                if (btn) btn.innerText = '👁️';
+            }
+        }
+
+        async function submitAuth() {
+            const input = document.getElementById('authPasswordInput');
+            const wrap = document.querySelector('.auth-input-wrap');
+            const errEl = document.getElementById('authErrorMsg');
+            const btn = document.getElementById('authSubmitBtn');
+            const pass = input ? input.value.trim() : '';
+
+            if (!pass) {
+                if (wrap) wrap.classList.add('error');
+                if (errEl) {
+                    errEl.innerText = 'Введите пароль';
+                    errEl.style.display = 'block';
+                }
+                haptic('error');
+                return;
+            }
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span>Проверка...</span>';
+            }
+            if (errEl) errEl.style.display = 'none';
+            if (wrap) wrap.classList.remove('error');
+
+            try {
+                const res = await originalFetch('/api/auth/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: pass })
+                });
+                const data = await res.json();
+                if (res.ok && data.status === 'ok') {
+                    localStorage.setItem('budget_app_password', pass);
+                    haptic('success');
+                    hideAuthOverlay();
+                    showToast('Вход выполнен!');
+                    loadMainSummary();
+                } else {
+                    haptic('error');
+                    if (wrap) wrap.classList.add('error');
+                    if (errEl) {
+                        errEl.innerText = data.message || 'Неверный пароль';
+                        errEl.style.display = 'block';
+                    }
+                }
+            } catch (e) {
+                haptic('error');
+                if (errEl) {
+                    errEl.innerText = 'Ошибка соединения с сервером';
+                    errEl.style.display = 'block';
+                }
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<span>Войти</span><span style="font-size: 16px;">➔</span>';
+                }
+            }
+        }
+
+        function logoutAuth() {
+            if (confirm("Выйти из приложения? При следующем входе потребуется ввести пароль.")) {
+                localStorage.removeItem('budget_app_password');
+                showAuthOverlay();
+            }
         }
 
         const monthsRu = ["январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"];
@@ -1823,7 +2146,19 @@
         }
         initQuickExpense();
         switchUser(currentUser);
-        loadMainSummary();
+
+        const authInputEl = document.getElementById('authPasswordInput');
+        if (authInputEl) {
+            authInputEl.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    submitAuth();
+                }
+            });
+        }
+
+        if (checkAuthOnStartup()) {
+            loadMainSummary();
+        }
 
         // ================= СТАТИСТИКА =================
         let chartInstance = null;
