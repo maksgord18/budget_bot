@@ -930,6 +930,148 @@
             font-weight: 600;
         }
 
+        /* РАСХОДЫ: СТРОКА КАТЕГОРИИ И МУЛЬТИ-ПОКУПКИ (+) */
+        .category-row.expense-item {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0;
+            padding: 10px 14px;
+        }
+
+        .category-main-line {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            gap: 8px;
+        }
+
+        .category-right-controls {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .category-row.expense-item .category-input {
+            width: 95px;
+        }
+
+        .btn-add-sub {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #F0F4F8;
+            color: var(--user-primary);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            font-size: 20px;
+            line-height: 1;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.12s, background 0.15s, color 0.15s;
+            flex-shrink: 0;
+            padding: 0;
+            padding-bottom: 2px;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .btn-add-sub:active {
+            transform: scale(0.9);
+            background: #E2E8F0;
+        }
+
+        .category-sub-purchases {
+            width: 100%;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        .sub-purchase-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            gap: 8px;
+        }
+
+        .sub-purchase-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .sub-purchase-right {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-remove-sub {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #FEE2E2;
+            color: #DC2626;
+            border: none;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.12s, opacity 0.15s;
+            flex-shrink: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .btn-remove-sub:active {
+            transform: scale(0.9);
+            opacity: 0.8;
+        }
+
+        .category-sub-total-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #F8F9FA;
+            border-radius: 10px;
+            padding: 6px 10px;
+            margin-top: 2px;
+        }
+
+        .sub-total-formula {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 60%;
+        }
+
+        .sub-total-sum {
+            font-size: 13px;
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        .sub-total-sum b {
+            color: var(--user-primary);
+            font-weight: 800;
+        }
+
         /* УБИРАЕМ СТРЕЛКИ СПИННЕРА ДЛЯ ЧИСЛОВЫХ ПОЛЕЙ */
         input::-webkit-outer-spin-button,
         input::-webkit-inner-spin-button {
@@ -2921,37 +3063,224 @@
             }
         }
 
+        // ================= МУЛЬТИ-ПОКУПКИ ПО КАТЕГОРИЯМ (+) =================
+        let dailySubPurchases = {};
+
+        function getBreakdownKey(catKey) {
+            return `${selectedYear}_${selectedMonthIndex}_${selectedDay}_${currentUser}_${catKey}`;
+        }
+
+        function loadBreakdown(catKey) {
+            const k = getBreakdownKey(catKey);
+            if (dailySubPurchases[k] !== undefined) return dailySubPurchases[k];
+            try {
+                const stored = localStorage.getItem('budget_sub_' + k);
+                if (stored) {
+                    dailySubPurchases[k] = JSON.parse(stored);
+                    return dailySubPurchases[k];
+                }
+            } catch(e) {}
+            return null;
+        }
+
+        function saveBreakdown(catKey, items) {
+            const k = getBreakdownKey(catKey);
+            dailySubPurchases[k] = items;
+            try {
+                localStorage.setItem('budget_sub_' + k, JSON.stringify(items));
+            } catch(e) {}
+        }
+
+        function clearBreakdown(catKey) {
+            const k = getBreakdownKey(catKey);
+            delete dailySubPurchases[k];
+            try {
+                localStorage.removeItem('budget_sub_' + k);
+            } catch(e) {}
+        }
+
+        function addSubPurchase(key) {
+            haptic('light');
+            let items = loadBreakdown(key);
+            const mainInput = document.getElementById('cat_' + key);
+            const mainVal = mainInput ? mainInput.value.trim() : '';
+
+            if (!items || items.length === 0) {
+                items = [mainVal || '', ''];
+            } else {
+                items.push('');
+            }
+            saveBreakdown(key, items);
+            renderSubPurchases(key);
+
+            setTimeout(() => {
+                const subInputs = document.querySelectorAll(`#subContainer_${key} .sub-input`);
+                if (subInputs.length > 0) {
+                    const last = subInputs[subInputs.length - 1];
+                    last.focus();
+                }
+            }, 80);
+        }
+
+        function removeSubPurchase(key, index) {
+            haptic('light');
+            let items = loadBreakdown(key);
+            if (!items) return;
+            items.splice(index, 1);
+            if (items.length <= 1) {
+                const remainingVal = items[0] || '';
+                clearBreakdown(key);
+                const mainInput = document.getElementById('cat_' + key);
+                if (mainInput) mainInput.value = remainingVal ? remainingVal.replace('.', ',') : '';
+                const container = document.getElementById(`subContainer_${key}`);
+                if (container) {
+                    container.style.display = 'none';
+                    container.innerHTML = '';
+                }
+                if (!currentMonthData[selectedDay]) currentMonthData[selectedDay] = {};
+                currentMonthData[selectedDay][key] = remainingVal ? remainingVal.replace(',', '.') : '';
+                calculateDailyTotal();
+            } else {
+                saveBreakdown(key, items);
+                renderSubPurchases(key);
+            }
+        }
+
+        function onMainExpenseInput(input, key) {
+            const cleanVal = sanitizeDecimalInput(input);
+            let items = loadBreakdown(key);
+            if (items && items.length > 1) {
+                items[0] = cleanVal ? cleanVal.replace(',', '.') : '';
+                saveBreakdown(key, items);
+                recalcCategory(key);
+            } else {
+                if (!currentMonthData[selectedDay]) currentMonthData[selectedDay] = {};
+                currentMonthData[selectedDay][key] = cleanVal ? cleanVal.replace(',', '.') : '';
+                calculateDailyTotal();
+            }
+        }
+
+        function onSubExpenseInput(key, index, input) {
+            const cleanVal = sanitizeDecimalInput(input);
+            let items = loadBreakdown(key);
+            if (!items) items = [];
+            items[index] = cleanVal ? cleanVal.replace(',', '.') : '';
+            saveBreakdown(key, items);
+            recalcCategory(key);
+        }
+
+        function recalcCategory(key) {
+            const items = loadBreakdown(key);
+            if (!items || items.length <= 1) {
+                const mainInput = document.getElementById('cat_' + key);
+                const val = mainInput ? (parseFloat(mainInput.value.replace(',', '.')) || 0) : 0;
+                if (!currentMonthData[selectedDay]) currentMonthData[selectedDay] = {};
+                currentMonthData[selectedDay][key] = (val === 0 ? '' : (Number.isInteger(val) ? String(val) : String(val)));
+                calculateDailyTotal();
+                return;
+            }
+
+            let sum = 0;
+            let parts = [];
+            items.forEach((it) => {
+                const num = parseFloat(String(it).replace(',', '.')) || 0;
+                sum += num;
+                if (it !== '' && it !== null && it !== undefined) {
+                    parts.push(formatMoney(num));
+                }
+            });
+
+            const formulaEl = document.getElementById(`formula_${key}`);
+            const subTotalEl = document.getElementById(`subTotal_${key}`);
+            if (formulaEl) {
+                formulaEl.innerText = parts.length > 0 ? parts.join(' + ') : '0';
+            }
+            if (subTotalEl) {
+                subTotalEl.innerText = formatMoney(sum);
+            }
+
+            if (!currentMonthData[selectedDay]) currentMonthData[selectedDay] = {};
+            currentMonthData[selectedDay][key] = (sum === 0 ? '' : (Number.isInteger(sum) ? String(sum) : String(sum)));
+            calculateDailyTotal();
+        }
+
+        function renderSubPurchases(key) {
+            const items = loadBreakdown(key);
+            const container = document.getElementById(`subContainer_${key}`);
+            const mainInput = document.getElementById(`cat_${key}`);
+            if (!container) return;
+
+            if (!items || items.length <= 1) {
+                container.style.display = 'none';
+                container.innerHTML = '';
+                if (items && items.length === 1 && mainInput) {
+                    mainInput.value = items[0] ? items[0].replace('.', ',') : '';
+                }
+                recalcCategory(key);
+                return;
+            }
+
+            container.style.display = 'flex';
+            if (mainInput) {
+                mainInput.value = items[0] ? items[0].replace('.', ',') : '';
+            }
+
+            let rowsHtml = '';
+            for (let i = 1; i < items.length; i++) {
+                const val = items[i] ? String(items[i]).replace('.', ',') : '';
+                rowsHtml += `
+                <div class="sub-purchase-row">
+                    <span class="sub-purchase-label">+ покупка ${i + 1}:</span>
+                    <div class="sub-purchase-right">
+                        <div class="category-input-wrap" style="width: 95px;">
+                            <input type="text" class="category-input sub-input" value="${val}" placeholder="0" inputmode="decimal" onfocus="this.select()" oninput="onSubExpenseInput('${key}', ${i}, this)">
+                            <span class="currency-symbol">₽</span>
+                        </div>
+                        <button type="button" class="btn-remove-sub" onclick="removeSubPurchase('${key}', ${i})" title="Удалить">✕</button>
+                    </div>
+                </div>`;
+            }
+
+            rowsHtml += `
+            <div class="category-sub-total-bar">
+                <span class="sub-total-formula" id="formula_${key}"></span>
+                <span class="sub-total-sum">Итого: <b id="subTotal_${key}">0</b> ₽</span>
+            </div>`;
+
+            container.innerHTML = rowsHtml;
+            recalcCategory(key);
+        }
+
         function renderForm() {
             const container = document.getElementById('formContainer');
             container.innerHTML = '';
             for (let key in categories) {
                 const cat = categories[key];
-                container.innerHTML += `<div class="category-row">
-                    <div class="category-left">
-                        <div class="category-icon-box" style="background: ${cat.bg}; color: ${cat.color};">${cat.icon}</div>
-                        <span class="category-name">${cat.name}</span>
+                container.innerHTML += `<div class="category-row expense-item" id="catRow_${key}">
+                    <div class="category-main-line">
+                        <div class="category-left">
+                            <div class="category-icon-box" style="background: ${cat.bg}; color: ${cat.color};">${cat.icon}</div>
+                            <span class="category-name">${cat.name}</span>
+                        </div>
+                        <div class="category-right-controls">
+                            <div class="category-input-wrap">
+                                <input type="text" id="cat_${key}" class="category-input" placeholder="0" inputmode="decimal" onfocus="this.select()" oninput="onMainExpenseInput(this, '${key}')">
+                                <span class="currency-symbol">₽</span>
+                            </div>
+                            <button type="button" class="btn-add-sub" onclick="addSubPurchase('${key}')" title="Добавить покупку">+</button>
+                        </div>
                     </div>
-                    <div class="category-input-wrap">
-                        <input type="text" id="cat_${key}" class="category-input" placeholder="0" inputmode="decimal" oninput="onExpenseInput(this, '${key}')">
-                        <span class="currency-symbol">₽</span>
-                    </div>
+                    <div class="category-sub-purchases" id="subContainer_${key}" style="display: none;"></div>
                 </div>`;
             }
         }
 
-        function onExpenseInput(input, key) {
-            const val = sanitizeDecimalInput(input);
-            if (!currentMonthData[selectedDay]) currentMonthData[selectedDay] = {};
-            currentMonthData[selectedDay][key] = val.replace(',', '.');
-            calculateDailyTotal();
-        }
-
         function calculateDailyTotal() {
             let total = 0;
+            const dayData = currentMonthData[selectedDay] || {};
             for (let key in categories) {
-                let el = document.getElementById('cat_' + key);
-                if (el && el.value) {
-                    const num = parseFloat(el.value.replace(',', '.')) || 0;
+                if (dayData[key]) {
+                    const num = parseFloat(String(dayData[key]).replace(',', '.')) || 0;
                     total += num;
                 }
             }
@@ -2992,16 +3321,24 @@
             }
 
             let dayData = currentMonthData[selectedDay] || {};
-            let total = 0;
             for (let key in categories) {
-                let input = document.getElementById('cat_' + key);
-                if (input) {
-                    const rawVal = dayData[key] !== undefined && dayData[key] !== null ? String(dayData[key]) : '';
-                    input.value = rawVal ? rawVal.replace('.', ',') : '';
-                    if (rawVal) total += parseFloat(rawVal.replace(',', '.')) || 0;
+                const items = loadBreakdown(key);
+                if (items && items.length > 1) {
+                    renderSubPurchases(key);
+                } else {
+                    const subContainer = document.getElementById(`subContainer_${key}`);
+                    if (subContainer) {
+                        subContainer.style.display = 'none';
+                        subContainer.innerHTML = '';
+                    }
+                    let input = document.getElementById('cat_' + key);
+                    if (input) {
+                        const rawVal = dayData[key] !== undefined && dayData[key] !== null ? String(dayData[key]) : '';
+                        input.value = rawVal ? rawVal.replace('.', ',') : '';
+                    }
                 }
             }
-            document.getElementById('dailyTotal').innerText = formatMoney(total);
+            calculateDailyTotal();
             document.getElementById('btnPrev').disabled = (selectedDay === 1);
             document.getElementById('btnNext').disabled = (selectedDay === currentNumDays);
         }
@@ -3047,7 +3384,7 @@
         function handleDismissKeyboard(e) {
             const active = document.activeElement;
             if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
-                if (e.target !== active && !e.target.closest('input, textarea, select, button, .category-input-wrap, .quick-amount-wrap, .save-btn, .today-chip, .month-chip, .mandatory-chip, .user-toggle-item, .nav-item, .mandatory-check-wrap')) {
+                if (e.target !== active && !e.target.closest('input, textarea, select, button, .category-input-wrap, .quick-amount-wrap, .save-btn, .today-chip, .month-chip, .mandatory-chip, .user-toggle-item, .nav-item, .mandatory-check-wrap, .btn-add-sub, .btn-remove-sub')) {
                     active.blur();
                 }
             }
