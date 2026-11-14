@@ -81,7 +81,8 @@ CATEGORY_MAPPING = {
     "хозтовары": "хозтовары, уют",
     "связь": "связь и интернет",
     "одежда": "одежда, обувь и аксессуары",
-    "тренировки": "тренировки",
+    "для дома": "для дома",
+    "тренировки": "для дома",
     "репетитор": "репетитор",
     "здоровье": "здоровье и личная гигиена (+линзы)",
     "уход": "уход за собой (крема, шампуни и т.д.)",
@@ -105,7 +106,8 @@ INCOME_SOURCES = [
     "кэшбэк Тинькофф",
     "аванс Максим",
     "зарплата Яся",
-    "стипендия Максим"
+    "стипендия Максим",
+    "другие доходы"
 ]
 
 def find_worksheet(sh, dt_or_str):
@@ -446,9 +448,9 @@ async def get_income(month: str):
                         u = 'maxim' if c2 == 'Максим' else 'yasya'
                         amt = clean_val(r[3] if len(r) > 3 else '')
                         income_data.append({"row": idx + 1, "col": 4, "name": f"Остаток {c2}", "date": "остаток", "amount": amt, "user": u})
-                    elif c2 and idx >= 64 and idx <= 71:
+                    elif c2 and idx >= 64:
                         if 'итого' in c2.lower():
-                            continue
+                            break
                         u = 'maxim' if 'максим' in c2.lower() else ('yasya' if 'яся' in c2.lower() else 'all')
                         amt = clean_val(r[4] if len(r) > 4 else '')
                         income_data.append({"row": idx + 1, "col": 5, "name": c2, "date": r[3] if len(r) > 3 else '', "amount": amt, "user": u})
@@ -693,8 +695,8 @@ async def create_month_sheet(request: Request):
             clear_ranges.append(f"C{r_max}:{end_col_letter}{r_yas}")
 
         clear_ranges.append("D59:D60")
-        clear_ranges.append("E65:E71")
-        clear_ranges.append("I65:I71")
+        clear_ranges.append("E65:E75")
+        clear_ranges.append("I65:I75")
 
         new_ws.batch_clear(clear_ranges)
 
