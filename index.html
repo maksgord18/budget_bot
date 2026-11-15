@@ -756,6 +756,71 @@
             padding: 6px 0 8px 0;
             color: var(--text-main);
             width: 100%;
+            position: relative;
+        }
+
+        /* ИНДИКАТОР АВТОСОХРАНЕНИЯ */
+        .save-status-indicator {
+            position: absolute;
+            top: -4px;
+            right: 2px;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease, transform 0.2s ease;
+            z-index: 5;
+        }
+
+        .save-status-indicator.visible {
+            opacity: 1;
+        }
+
+        .save-status-indicator.saving {
+            opacity: 1;
+            color: var(--user-primary);
+        }
+
+        .save-status-indicator.saved {
+            opacity: 1;
+            color: #10B981;
+        }
+
+        .save-status-indicator.saved.fade {
+            opacity: 0.35;
+            transition: opacity 0.8s ease;
+        }
+
+        .save-status-indicator.error {
+            opacity: 1;
+            color: #EF4444;
+        }
+
+        .sync-spin {
+            animation: syncSpin 0.9s linear infinite;
+            width: 18px;
+            height: 18px;
+        }
+
+        @keyframes syncSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .check-pop {
+            animation: checkPop 0.22s ease-out;
+            width: 18px;
+            height: 18px;
+        }
+
+        @keyframes checkPop {
+            0% { transform: scale(0.6); opacity: 0; }
+            70% { transform: scale(1.18); }
+            100% { transform: scale(1); opacity: 1; }
         }
 
         .header-controls>button {
@@ -1561,6 +1626,7 @@
                     <span class="header-subtitle" id="weekdayDisplay"></span>
                 </div>
                 <button id="btnNext" onclick="changeDay(1)">›</button>
+                <div id="saveStatusIndicator" class="save-status-indicator" title="Статус сохранения"></div>
             </div>
 
             <!-- БЫСТРЫЕ КНОПКИ ДАТЫ И ПЛАТЕЖЕЙ -->
@@ -1940,6 +2006,9 @@
         let currentActiveTab = 'main';
 
         function showPage(pageId) {
+            if (typeof isDayDirty !== 'undefined' && isDayDirty) {
+                performAutoSave(false);
+            }
             haptic('selection');
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.getElementById(pageId).classList.add('active');
@@ -1965,6 +2034,9 @@
 
         // ================= ТАБЫ НИЖНЕГО БАРА =================
         function showTab(tabName) {
+            if (typeof isDayDirty !== 'undefined' && isDayDirty) {
+                performAutoSave(false);
+            }
             haptic('selection');
             currentActiveTab = tabName;
             document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
@@ -2011,6 +2083,10 @@
         let currentMonthDataFull = null;
 
         function switchUser(user) {
+            if (user === currentUser) return;
+            if (typeof isDayDirty !== 'undefined' && isDayDirty) {
+                performAutoSave(false);
+            }
             haptic('selection');
             currentUser = user;
             try {
@@ -3055,6 +3131,12 @@
         function goToToday() {
             haptic('medium');
             const today = new Date();
+            if (selectedYear === today.getFullYear() && selectedMonthIndex === today.getMonth() && selectedDay === today.getDate()) {
+                return;
+            }
+            if (typeof isDayDirty !== 'undefined' && isDayDirty) {
+                performAutoSave(false);
+            }
             if (selectedYear === today.getFullYear() && selectedMonthIndex === today.getMonth()) {
                 selectedDay = today.getDate();
                 updateExpenseUI();
@@ -3112,6 +3194,7 @@
             }
             saveBreakdown(key, items);
             renderSubPurchases(key);
+            triggerAutoSave(false);
 
             setTimeout(() => {
                 const subInputs = document.querySelectorAll(`#subContainer_${key} .sub-input`);
@@ -3144,6 +3227,7 @@
                 saveBreakdown(key, items);
                 renderSubPurchases(key);
             }
+            triggerAutoSave(false);
         }
 
         function onMainExpenseInput(input, key) {
@@ -3158,6 +3242,7 @@
                 currentMonthData[selectedDay][key] = cleanVal ? cleanVal.replace(',', '.') : '';
                 calculateDailyTotal();
             }
+            triggerAutoSave(false);
         }
 
         function onSubExpenseInput(key, index, input) {
@@ -3167,6 +3252,7 @@
             items[index] = cleanVal ? cleanVal.replace(',', '.') : '';
             saveBreakdown(key, items);
             recalcCategory(key);
+            triggerAutoSave(false);
         }
 
         function recalcCategory(key) {
@@ -3233,7 +3319,7 @@
                     <span class="sub-purchase-label">+ покупка ${i + 1}:</span>
                     <div class="sub-purchase-right">
                         <div class="category-input-wrap" style="width: 95px;">
-                            <input type="text" class="category-input sub-input" value="${val}" placeholder="0" inputmode="decimal" onfocus="this.select()" oninput="onSubExpenseInput('${key}', ${i}, this)">
+                            <input type="text" class="category-input sub-input" value="${val}" placeholder="0" inputmode="decimal" onfocus="this.select()" onblur="if(isDayDirty) performAutoSave(false)" oninput="onSubExpenseInput('${key}', ${i}, this)">
                             <span class="currency-symbol">₽</span>
                         </div>
                         <button type="button" class="btn-remove-sub" onclick="removeSubPurchase('${key}', ${i})" title="Удалить">✕</button>
@@ -3264,7 +3350,7 @@
                         </div>
                         <div class="category-right-controls">
                             <div class="category-input-wrap">
-                                <input type="text" id="cat_${key}" class="category-input" placeholder="0" inputmode="decimal" onfocus="this.select()" oninput="onMainExpenseInput(this, '${key}')">
+                                <input type="text" id="cat_${key}" class="category-input" placeholder="0" inputmode="decimal" onfocus="this.select()" onblur="if(isDayDirty) performAutoSave(false)" oninput="onMainExpenseInput(this, '${key}')">
                                 <span class="currency-symbol">₽</span>
                             </div>
                             <button type="button" class="btn-add-sub" onclick="addSubPurchase('${key}')" title="Добавить покупку">+</button>
@@ -3290,6 +3376,9 @@
         function changeDay(delta) {
             let newDay = selectedDay + delta;
             if (newDay >= 1 && newDay <= currentNumDays) {
+                if (isDayDirty) {
+                    performAutoSave(false);
+                }
                 haptic('light');
                 selectedDay = newDay;
                 updateExpenseUI();
@@ -3297,6 +3386,9 @@
         }
 
         function updateExpenseUI() {
+            if (!isSavingInProgress && !isDayDirty) {
+                setSaveStatus('');
+            }
             const dt = new Date(selectedYear, selectedMonthIndex, selectedDay);
             const dateStr = dt.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
             const weekdayStr = dt.toLocaleDateString('ru-RU', { weekday: 'long' });
@@ -3343,41 +3435,154 @@
             document.getElementById('btnNext').disabled = (selectedDay === currentNumDays);
         }
 
-        async function saveData() {
-            haptic('medium');
-            const btn = document.querySelector('#page-expense-daily .save-btn');
-            btn.innerText = "⏳ Сохранение...";
-            const dayData = currentMonthData[selectedDay] || {};
+        // ================= АВТОСОХРАНЕНИЕ РАСХОДОВ ЗА ДЕНЬ =================
+        let isDayDirty = false;
+        let autoSaveTimer = null;
+        let isSavingInProgress = false;
+        let pendingSaveNeeded = false;
+        let saveStatusTimeout = null;
+
+        function setSaveStatus(status) {
+            const el = document.getElementById('saveStatusIndicator');
+            if (!el) return;
+            if (saveStatusTimeout) {
+                clearTimeout(saveStatusTimeout);
+                saveStatusTimeout = null;
+            }
+
+            if (status === 'saving') {
+                el.className = 'save-status-indicator saving visible';
+                el.innerHTML = `<svg class="sync-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <polyline points="1 20 1 14 7 14"></polyline>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>`;
+            } else if (status === 'saved') {
+                el.className = 'save-status-indicator saved visible';
+                el.innerHTML = `<svg class="check-pop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>`;
+                saveStatusTimeout = setTimeout(() => {
+                    el.classList.add('fade');
+                    saveStatusTimeout = setTimeout(() => {
+                        el.className = 'save-status-indicator';
+                        el.innerHTML = '';
+                    }, 1200);
+                }, 2200);
+            } else if (status === 'error') {
+                el.className = 'save-status-indicator error visible';
+                el.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>`;
+                saveStatusTimeout = setTimeout(() => {
+                    el.className = 'save-status-indicator';
+                    el.innerHTML = '';
+                }, 4000);
+            } else {
+                el.className = 'save-status-indicator';
+                el.innerHTML = '';
+            }
+        }
+
+        function triggerAutoSave(immediate = false) {
+            isDayDirty = true;
+            if (autoSaveTimer) {
+                clearTimeout(autoSaveTimer);
+                autoSaveTimer = null;
+            }
+
+            if (immediate) {
+                performAutoSave(false);
+            } else {
+                setSaveStatus('saving');
+                autoSaveTimer = setTimeout(() => {
+                    performAutoSave(false);
+                }, 1200);
+            }
+        }
+
+        async function performAutoSave(isManual = false) {
+            if (autoSaveTimer) {
+                clearTimeout(autoSaveTimer);
+                autoSaveTimer = null;
+            }
+
+            if (isSavingInProgress) {
+                pendingSaveNeeded = true;
+                return;
+            }
+
+            const targetYear = selectedYear;
+            const targetMonth = selectedMonthIndex;
+            const targetDay = selectedDay;
+            const targetUser = currentUser;
+            const dayData = currentMonthData[targetDay] || {};
+
             const cleanDayData = {};
             for (let k in dayData) {
                 cleanDayData[k] = String(dayData[k]).replace(',', '.').trim();
             }
 
+            isSavingInProgress = true;
+            setSaveStatus('saving');
+
+            const manualBtn = document.querySelector('#page-expense-daily .save-btn');
+            if (isManual && manualBtn) {
+                manualBtn.innerText = "⏳ Сохранение...";
+            }
+
             try {
                 const response = await fetch('/api/day', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        date: `${selectedYear}-${String(selectedMonthIndex + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`,
+                        date: `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`,
                         data: cleanDayData,
-                        user: currentUser
+                        user: targetUser
                     })
                 });
                 const resJson = await response.json();
                 if (resJson.status === "ok") {
-                    showToast("День успешно сохранен!");
+                    if (targetYear === selectedYear && targetMonth === selectedMonthIndex && targetDay === selectedDay && targetUser === currentUser) {
+                        isDayDirty = false;
+                    }
                     if (currentMonthDataFull) {
-                        const targetStore = (currentUser === 'yasya') ? currentMonthDataFull.data_yasya : currentMonthDataFull.data_maxim;
-                        if (targetStore) targetStore[selectedDay] = { ...dayData };
+                        const targetStore = (targetUser === 'yasya') ? currentMonthDataFull.data_yasya : currentMonthDataFull.data_maxim;
+                        if (targetStore) targetStore[targetDay] = { ...dayData };
+                    }
+                    setSaveStatus('saved');
+                    if (isManual) {
+                        showToast("День успешно сохранен!");
                     }
                     loadMainSummary();
                 } else {
-                    showToast(resJson.message || "Ошибка сохранения", true);
+                    setSaveStatus('error');
+                    if (isManual) {
+                        showToast(resJson.message || "Ошибка сохранения", true);
+                    }
                 }
             } catch (e) {
-                showToast("Ошибка сети при сохранении", true);
+                setSaveStatus('error');
+                if (isManual) {
+                    showToast("Ошибка сети при сохранении", true);
+                }
             } finally {
-                btn.innerText = "💾 Сохранить день";
+                isSavingInProgress = false;
+                if (manualBtn) {
+                    manualBtn.innerText = "💾 Сохранить день";
+                }
+                if (pendingSaveNeeded) {
+                    pendingSaveNeeded = false;
+                    performAutoSave(false);
+                }
             }
+        }
+
+        async function saveData() {
+            haptic('medium');
+            await performAutoSave(true);
         }
 
         // ================= ЗАКРЫТИЕ КЛАВИАТУРЫ ПО ТАПУ ВНЕ ПОЛЕЙ =================
@@ -3386,11 +3591,25 @@
             if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
                 if (e.target !== active && !e.target.closest('input, textarea, select, button, .category-input-wrap, .quick-amount-wrap, .save-btn, .today-chip, .month-chip, .mandatory-chip, .user-toggle-item, .nav-item, .mandatory-check-wrap, .btn-add-sub, .btn-remove-sub')) {
                     active.blur();
+                    if (isDayDirty) {
+                        performAutoSave(false);
+                    }
                 }
             }
         }
         document.addEventListener('touchstart', handleDismissKeyboard, { passive: true });
         document.addEventListener('mousedown', handleDismissKeyboard);
+
+        window.addEventListener('beforeunload', () => {
+            if (isDayDirty) {
+                performAutoSave(false);
+            }
+        });
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden' && isDayDirty) {
+                performAutoSave(false);
+            }
+        });
 
     </script>
 </body>
