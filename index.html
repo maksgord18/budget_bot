@@ -236,6 +236,10 @@
             max-width: 100%;
             box-sizing: border-box;
             gap: 2px;
+            touch-action: pan-y;
+            user-select: none;
+            -webkit-user-select: none;
+            cursor: pointer;
         }
 
         .user-toggle-item {
@@ -255,6 +259,14 @@
             cursor: pointer;
             transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
             font-family: inherit;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .user-toggle-item * {
+            pointer-events: none;
         }
 
         .user-toggle-item.active {
@@ -284,6 +296,10 @@
             max-width: 100%;
             gap: 3px;
             box-sizing: border-box;
+            touch-action: pan-y;
+            user-select: none;
+            -webkit-user-select: none;
+            cursor: pointer;
         }
 
         .stat-toggle-item {
@@ -302,6 +318,14 @@
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             font-family: inherit;
             white-space: nowrap;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .stat-toggle-item * {
+            pointer-events: none;
         }
 
         .stat-toggle-item.active {
@@ -2082,48 +2106,85 @@
         let currentUser = localStorage.getItem('budget_user') || 'maxim';
         let currentMonthDataFull = null;
 
-        function switchUser(user) {
-            if (user === currentUser) return;
-            if (typeof isDayDirty !== 'undefined' && isDayDirty) {
-                performAutoSave(false);
-            }
-            haptic('selection');
-            currentUser = user;
-            try {
-                localStorage.setItem('budget_user', user);
-            } catch (e) { }
-
+        function updateUserToggleUI(user) {
+            const u = user || currentUser || 'maxim';
             // Переключение темы оформления на body
-            document.body.className = (user === 'yasya') ? 'theme-yasya' : 'theme-maxim';
+            document.body.className = (u === 'yasya') ? 'theme-yasya' : 'theme-maxim';
 
-            // Обновление состояния кнопок тумблера
+            // Обновление состояния кнопок тумблера на всех экранах
             ['mainToggle', 'dailyToggle'].forEach(prefix => {
                 const btnM = document.getElementById(prefix + 'Maxim');
                 const btnY = document.getElementById(prefix + 'Yasya');
                 if (btnM && btnY) {
-                    btnM.classList.toggle('active', user === 'maxim');
-                    btnY.classList.toggle('active', user === 'yasya');
+                    btnM.classList.toggle('active', u === 'maxim');
+                    btnY.classList.toggle('active', u === 'yasya');
+                    btnM.setAttribute('aria-pressed', u === 'maxim' ? 'true' : 'false');
+                    btnY.setAttribute('aria-pressed', u === 'yasya' ? 'true' : 'false');
                 }
             });
 
             // Обновление бейджа на карточке быстрого расхода
             const badge = document.getElementById('quickUserBadge');
             if (badge) {
-                badge.innerHTML = (user === 'yasya') ? '👩🏼‍🦰 Яся' : '👨🏻‍💻 Максим';
+                badge.innerHTML = (u === 'yasya') ? '👩🏼‍🦰 Яся' : '👨🏻‍💻 Максим';
             }
 
             // Обновление заголовка итоговой суммы на странице дня
             const dailyLabel = document.getElementById('dailyTotalLabel');
             if (dailyLabel) {
-                dailyLabel.innerText = `Итого за день (${user === 'yasya' ? 'Яся' : 'Максим'})`;
+                dailyLabel.innerText = `Итого за день (${u === 'yasya' ? 'Яся' : 'Максим'})`;
+            }
+        }
+
+        function switchUser(user, force = false) {
+            if (!user) return;
+
+            // Если тот же самый пользователь и не форсировано:
+            // всё равно синхронизируем UI на случай рассинхрона классов
+            if (!force && user === currentUser) {
+                updateUserToggleUI(currentUser);
+                return;
             }
 
-            // Обновление данных под выбранного пользователя
+            // Скрываем клавиатуру, если открыто поле ввода
+            const active = document.activeElement;
+            if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+                active.blur();
+            }
+
+            // Сохраняем несохранённый ввод текущего пользователя
+            if (typeof isDayDirty !== 'undefined' && isDayDirty) {
+                performAutoSave(false);
+            }
+
+            haptic('selection');
+            currentUser = user;
+            try {
+                localStorage.setItem('budget_user', user);
+            } catch (e) { }
+
+            // Обновляем визуальное состояние кнопок и темы
+            updateUserToggleUI(user);
+
+            // Обновляем данные под выбранного пользователя
             updateUserDataViews();
         }
 
         function updateUserDataViews() {
-            if (!currentMonthDataFull) return;
+            if (!currentMonthDataFull) {
+                // Если данные месяца еще не загружены - фоново запросим их
+                const now = new Date();
+                const mStr = `${monthsRu[now.getMonth()]} ${currentYear}`;
+                fetch(`/api/expenses/month?month_str=${encodeURIComponent(mStr)}`)
+                    .then(r => r.json())
+                    .then(json => {
+                        if (json && json.status === "ok") {
+                            currentMonthDataFull = json;
+                            updateUserDataViews();
+                        }
+                    }).catch(() => {});
+                return;
+            }
 
             // 1. Быстрый расход: обновляем суммы за сегодня для выбранного пользователя
             const todayDay = new Date().getDate();
@@ -2145,6 +2206,44 @@
             if (document.getElementById('page-expense-daily').classList.contains('active')) {
                 updateExpenseUI();
             }
+        }
+
+        function initUserToggleGestures() {
+            document.querySelectorAll('.user-toggle-track').forEach(track => {
+                let startX = 0;
+                let startY = 0;
+                let isHorizontalSwipe = false;
+
+                track.addEventListener('touchstart', (e) => {
+                    if (e.touches.length !== 1) return;
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                    isHorizontalSwipe = false;
+                }, { passive: true });
+
+                track.addEventListener('touchmove', (e) => {
+                    if (e.touches.length !== 1) return;
+                    const dx = e.touches[0].clientX - startX;
+                    const dy = e.touches[0].clientY - startY;
+                    if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy)) {
+                        isHorizontalSwipe = true;
+                    }
+                }, { passive: true });
+
+                track.addEventListener('touchend', (e) => {
+                    if (!isHorizontalSwipe) return;
+                    const endX = e.changedTouches[0].clientX;
+                    const dx = endX - startX;
+                    if (dx > 25) {
+                        // Свайп вправо -> Яся
+                        switchUser('yasya');
+                    } else if (dx < -25) {
+                        // Свайп влево -> Максим
+                        switchUser('maxim');
+                    }
+                    isHorizontalSwipe = false;
+                }, { passive: true });
+            });
         }
 
         // ================= БЫСТРЫЙ ВВОД РАСХОДА =================
@@ -2349,6 +2448,12 @@
                         const userName = (currentUser === 'yasya') ? 'Яси' : 'Максима';
                         subtextEl.innerHTML = `Траты ${userName} за месяц: <strong>${Number(userVal).toLocaleString('ru-RU')} ₽</strong> (из ${Number(ms.all_total).toLocaleString('ru-RU')} ₽)`;
                     }
+
+                    // Синхронизируем экран расходов за день, если он активен
+                    if (document.getElementById('page-expense-daily').classList.contains('active')) {
+                        currentMonthData = userExp;
+                        updateExpenseUI();
+                    }
                 }
                 if (incJson.status === "ok") {
                     incJson.data.forEach(item => totalInc += parseFloat(item.amount) || 0);
@@ -2363,7 +2468,8 @@
             } catch (e) { }
         }
         initQuickExpense();
-        switchUser(currentUser);
+        switchUser(currentUser, true);
+        initUserToggleGestures();
 
         const authInputEl = document.getElementById('authPasswordInput');
         if (authInputEl) {
@@ -3016,6 +3122,7 @@
             }
 
             showPage('page-expense-daily');
+            updateUserToggleUI(currentUser);
             document.getElementById('formContainer').innerHTML = '<div style="text-align:center; padding: 20px; color:var(--text-muted);">Загрузка...</div>';
             document.getElementById('dateDisplay').innerText = 'Загрузка...';
             document.getElementById('weekdayDisplay').innerText = '';
