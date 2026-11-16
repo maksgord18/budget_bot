@@ -1808,6 +1808,20 @@
     <div id="toast" class="toast"></div>
 
     <script>
+        // ================= ГЛОБАЛЬНОЕ СОСТОЯНИЕ И АВТОСОХРАНЕНИЕ =================
+        var isDayDirty = false;
+        var autoSaveTimer = null;
+        var isSavingInProgress = false;
+        var pendingSaveNeeded = false;
+        var saveStatusTimeout = null;
+        var currentUser = localStorage.getItem('budget_user') || 'maxim';
+        var currentMonthDataFull = null;
+        var currentMonthData = {};
+        var currentNumDays = 31;
+        var selectedDay = 1;
+        var selectedMonthIndex = 0;
+        var selectedYear = 2026;
+
         let tg = window.Telegram ? window.Telegram.WebApp : null;
         if (tg) {
             try {
@@ -2030,7 +2044,7 @@
         let currentActiveTab = 'main';
 
         function showPage(pageId) {
-            if (typeof isDayDirty !== 'undefined' && isDayDirty) {
+            if (isDayDirty) {
                 performAutoSave(false);
             }
             haptic('selection');
@@ -2058,7 +2072,7 @@
 
         // ================= ТАБЫ НИЖНЕГО БАРА =================
         function showTab(tabName) {
-            if (typeof isDayDirty !== 'undefined' && isDayDirty) {
+            if (isDayDirty) {
                 performAutoSave(false);
             }
             haptic('selection');
@@ -2103,9 +2117,6 @@
         };
 
         // ================= ТУМБЛЕР ПОЛЬЗОВАТЕЛЯ (МАКСИМ / ЯСЯ) =================
-        let currentUser = localStorage.getItem('budget_user') || 'maxim';
-        let currentMonthDataFull = null;
-
         function updateUserToggleUI(user) {
             const u = user || currentUser || 'maxim';
             // Переключение темы оформления на body
@@ -2153,7 +2164,7 @@
             }
 
             // Сохраняем несохранённый ввод текущего пользователя
-            if (typeof isDayDirty !== 'undefined' && isDayDirty) {
+            if (isDayDirty) {
                 performAutoSave(false);
             }
 
@@ -2171,20 +2182,7 @@
         }
 
         function updateUserDataViews() {
-            if (!currentMonthDataFull) {
-                // Если данные месяца еще не загружены - фоново запросим их
-                const now = new Date();
-                const mStr = `${monthsRu[now.getMonth()]} ${currentYear}`;
-                fetch(`/api/expenses/month?month_str=${encodeURIComponent(mStr)}`)
-                    .then(r => r.json())
-                    .then(json => {
-                        if (json && json.status === "ok") {
-                            currentMonthDataFull = json;
-                            updateUserDataViews();
-                        }
-                    }).catch(() => {});
-                return;
-            }
+            if (!currentMonthDataFull) return;
 
             // 1. Быстрый расход: обновляем суммы за сегодня для выбранного пользователя
             const todayDay = new Date().getDate();
@@ -3102,12 +3100,6 @@
         }
 
         // ================= РАСХОДЫ (ДЕНЬ) =================
-        let currentMonthData = {};
-        let currentNumDays = 31;
-        let selectedDay = 1;
-        let selectedMonthIndex = 0;
-        let selectedYear = 2026;
-
         async function openExpenseMonth(monthIndex, year) {
             haptic('medium');
             selectedMonthIndex = monthIndex;
@@ -3241,7 +3233,7 @@
             if (selectedYear === today.getFullYear() && selectedMonthIndex === today.getMonth() && selectedDay === today.getDate()) {
                 return;
             }
-            if (typeof isDayDirty !== 'undefined' && isDayDirty) {
+            if (isDayDirty) {
                 performAutoSave(false);
             }
             if (selectedYear === today.getFullYear() && selectedMonthIndex === today.getMonth()) {
@@ -3543,12 +3535,6 @@
         }
 
         // ================= АВТОСОХРАНЕНИЕ РАСХОДОВ ЗА ДЕНЬ =================
-        let isDayDirty = false;
-        let autoSaveTimer = null;
-        let isSavingInProgress = false;
-        let pendingSaveNeeded = false;
-        let saveStatusTimeout = null;
-
         function setSaveStatus(status) {
             const el = document.getElementById('saveStatusIndicator');
             if (!el) return;
