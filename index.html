@@ -228,36 +228,60 @@
         }
 
         .user-toggle-track {
+            position: relative;
             display: flex;
-            background: #EBEBEF;
+            background: #E8E8ED;
             padding: 3px;
             border-radius: 14px;
             width: 100%;
             max-width: 100%;
             box-sizing: border-box;
-            gap: 2px;
             touch-action: pan-y;
             user-select: none;
             -webkit-user-select: none;
             cursor: pointer;
+            overflow: hidden;
+            border: 1px solid rgba(0, 0, 0, 0.04);
+        }
+
+        /* ПЛАВАЮЩИЙ ОСТРОВОК ПОЛЬЗОВАТЕЛЯ (iOS 18 SPRING THUMB) */
+        .user-toggle-thumb {
+            position: absolute;
+            top: 3px;
+            bottom: 3px;
+            left: 3px;
+            width: calc((100% - 6px) / 2);
+            border-radius: 11px;
+            background: var(--user-btn-bg);
+            box-shadow: 0 4px 14px var(--user-accent-shadow), 0 1px 3px rgba(0, 0, 0, 0.12);
+            transition: transform 0.34s cubic-bezier(0.34, 1.45, 0.64, 1), background 0.28s ease, box-shadow 0.28s ease;
+            transform: translateX(0);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .user-toggle-track.is-yasya .user-toggle-thumb {
+            transform: translateX(100%);
         }
 
         .user-toggle-item {
+            position: relative;
+            z-index: 2;
             flex: 1 1 50%;
             width: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
-            padding: 10px 16px;
+            gap: 7px;
+            padding: 9px 16px;
             border: none;
-            background: transparent;
+            background: transparent !important;
             border-radius: 11px;
             font-size: 14px;
-            font-weight: 700;
-            color: var(--text-muted);
+            font-weight: 600;
+            color: #71717A;
             cursor: pointer;
-            transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: color 0.22s ease, transform 0.12s ease;
             font-family: inherit;
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
@@ -265,18 +289,30 @@
             -webkit-user-select: none;
         }
 
+        .user-toggle-item:active {
+            transform: scale(0.96);
+        }
+
+        .user-toggle-item.active {
+            color: #FFFFFF !important;
+            font-weight: 700;
+            background: transparent !important;
+            box-shadow: none !important;
+        }
+
         .user-toggle-item * {
             pointer-events: none;
         }
 
-        .user-toggle-item.active {
-            background: var(--user-btn-bg);
-            color: #FFFFFF;
-            box-shadow: 0 3px 10px var(--user-accent-shadow);
-        }
-
         .user-toggle-avatar {
             font-size: 16px;
+            line-height: 1;
+            display: inline-block;
+            transition: transform 0.25s cubic-bezier(0.34, 1.45, 0.64, 1);
+        }
+
+        .user-toggle-item.active .user-toggle-avatar {
+            transform: scale(1.12);
         }
 
         /* АНАЛИТИКА: ТУМБЛЕР 3 РЕЖИМА */
@@ -288,34 +324,66 @@
         }
 
         .stat-toggle-track {
+            position: relative;
             display: flex;
-            background: #EBEBEF;
+            background: #E8E8ED;
             padding: 3px;
             border-radius: 14px;
             width: 100%;
             max-width: 100%;
-            gap: 3px;
             box-sizing: border-box;
             touch-action: pan-y;
             user-select: none;
             -webkit-user-select: none;
             cursor: pointer;
+            overflow: hidden;
+            border: 1px solid rgba(0, 0, 0, 0.04);
+        }
+
+        /* ПЛАВАЮЩИЙ ОСТРОВОК АНАЛИТИКИ (3 ПОЗИЦИИ) */
+        .stat-toggle-thumb {
+            position: absolute;
+            top: 3px;
+            bottom: 3px;
+            left: 3px;
+            width: calc((100% - 6px) / 3);
+            border-radius: 11px;
+            background: #2C2C2E;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transition: transform 0.34s cubic-bezier(0.34, 1.45, 0.64, 1), background 0.28s ease, box-shadow 0.28s ease;
+            transform: translateX(0);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .stat-toggle-track.is-maxim .stat-toggle-thumb {
+            transform: translateX(100%);
+            background: #1565C0;
+            box-shadow: 0 4px 12px rgba(21, 101, 192, 0.28);
+        }
+
+        .stat-toggle-track.is-yasya .stat-toggle-thumb {
+            transform: translateX(200%);
+            background: #D81B60;
+            box-shadow: 0 4px 12px rgba(216, 27, 96, 0.28);
         }
 
         .stat-toggle-item {
+            position: relative;
+            z-index: 2;
             flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 9px 6px;
             border: none;
-            background: transparent;
+            background: transparent !important;
             border-radius: 11px;
             font-size: 13px;
-            font-weight: 700;
-            color: var(--text-muted);
+            font-weight: 600;
+            color: #71717A;
             cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: color 0.2s ease, transform 0.12s ease;
             font-family: inherit;
             white-space: nowrap;
             touch-action: manipulation;
@@ -324,32 +392,19 @@
             -webkit-user-select: none;
         }
 
-        .stat-toggle-item * {
-            pointer-events: none;
+        .stat-toggle-item:active {
+            transform: scale(0.96);
         }
 
         .stat-toggle-item.active {
-            background: #FFFFFF;
-            color: var(--text-main);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            color: #FFFFFF !important;
+            font-weight: 700;
+            background: transparent !important;
+            box-shadow: none !important;
         }
 
-        .stat-toggle-item.active.theme-all-active {
-            background: #2C2C2E;
-            color: #FFFFFF;
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
-        }
-
-        .stat-toggle-item.active.theme-maxim-active {
-            background: #1565C0;
-            color: #FFFFFF;
-            box-shadow: 0 3px 10px rgba(21, 101, 192, 0.25);
-        }
-
-        .stat-toggle-item.active.theme-yasya-active {
-            background: #D81B60;
-            color: #FFFFFF;
-            box-shadow: 0 3px 10px rgba(216, 27, 96, 0.25);
+        .stat-toggle-item * {
+            pointer-events: none;
         }
 
         /* СПЛИТ-МЕТКИ ВНУТРИ КАТЕГОРИИ */
@@ -1549,6 +1604,7 @@
             <!-- ТУМБЛЕР МАКСИМ / ЯСЯ -->
             <div class="user-toggle-container">
                 <div class="user-toggle-track">
+                    <div class="user-toggle-thumb"></div>
                     <button type="button" id="mainToggleMaxim" class="user-toggle-item active" onclick="switchUser('maxim')">
                         <span class="user-toggle-avatar">👨🏻‍💻</span>
                         <span>Максим</span>
@@ -1663,6 +1719,7 @@
             <!-- ТУМБЛЕР МАКСИМ / ЯСЯ НА СТРАНИЦЕ ДНЯ -->
             <div class="user-toggle-container" style="margin-top: 4px; margin-bottom: 6px;">
                 <div class="user-toggle-track">
+                    <div class="user-toggle-thumb"></div>
                     <button type="button" id="dailyToggleMaxim" class="user-toggle-item active" onclick="switchUser('maxim')">
                         <span class="user-toggle-avatar">👨🏻‍💻</span>
                         <span>Максим</span>
@@ -1723,7 +1780,8 @@
             <!-- ТУМБЛЕР АНАЛИТИКИ: 👥 Вместе | 👨🏻‍💻 Максим | 👩🏼‍🦰 Яся -->
             <div class="stat-toggle-container">
                 <div class="stat-toggle-track">
-                    <button type="button" id="statToggleAll" class="stat-toggle-item active theme-all-active" onclick="switchStatUser('all')">
+                    <div class="stat-toggle-thumb"></div>
+                    <button type="button" id="statToggleAll" class="stat-toggle-item active" onclick="switchStatUser('all')">
                         <span>👥 Вместе</span>
                     </button>
                     <button type="button" id="statToggleMaxim" class="stat-toggle-item" onclick="switchStatUser('maxim')">
@@ -2122,6 +2180,11 @@
             // Переключение темы оформления на body
             document.body.className = (u === 'yasya') ? 'theme-yasya' : 'theme-maxim';
 
+            // Обновляем плавающий островок на дорожках тумблеров
+            document.querySelectorAll('.user-toggle-track').forEach(track => {
+                track.classList.toggle('is-yasya', u === 'yasya');
+            });
+
             // Обновление состояния кнопок тумблера на всех экранах
             ['mainToggle', 'dailyToggle'].forEach(prefix => {
                 const btnM = document.getElementById(prefix + 'Maxim');
@@ -2242,6 +2305,45 @@
                     isHorizontalSwipe = false;
                 }, { passive: true });
             });
+
+            // Свайп для 3-позиционного тумблера аналитики
+            const statTrack = document.querySelector('.stat-toggle-track');
+            if (statTrack) {
+                let startX = 0;
+                let startY = 0;
+                let isHorizontalSwipe = false;
+
+                statTrack.addEventListener('touchstart', (e) => {
+                    if (e.touches.length !== 1) return;
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                    isHorizontalSwipe = false;
+                }, { passive: true });
+
+                statTrack.addEventListener('touchmove', (e) => {
+                    if (e.touches.length !== 1) return;
+                    const dx = e.touches[0].clientX - startX;
+                    const dy = e.touches[0].clientY - startY;
+                    if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy)) {
+                        isHorizontalSwipe = true;
+                    }
+                }, { passive: true });
+
+                statTrack.addEventListener('touchend', (e) => {
+                    if (!isHorizontalSwipe) return;
+                    const endX = e.changedTouches[0].clientX;
+                    const dx = endX - startX;
+                    const modes = ['all', 'maxim', 'yasya'];
+                    let idx = modes.indexOf(currentStatFilter);
+                    if (idx === -1) idx = 0;
+                    if (dx > 25 && idx < 2) {
+                        switchStatUser(modes[idx + 1]);
+                    } else if (dx < -25 && idx > 0) {
+                        switchStatUser(modes[idx - 1]);
+                    }
+                    isHorizontalSwipe = false;
+                }, { passive: true });
+            }
         }
 
         // ================= БЫСТРЫЙ ВВОД РАСХОДА =================
@@ -2537,19 +2639,23 @@
         function renderStatistics() {
             if (!statExpJson) return;
 
-            // 1. Переключение активных кнопок тумблера
+            // 1. Позиция плавающего островка аналитики и активные кнопки
+            const statTrack = document.querySelector('.stat-toggle-track');
+            if (statTrack) {
+                statTrack.classList.toggle('is-maxim', currentStatFilter === 'maxim');
+                statTrack.classList.toggle('is-yasya', currentStatFilter === 'yasya');
+            }
+
             ['All', 'Maxim', 'Yasya'].forEach(name => {
                 const btn = document.getElementById('statToggle' + name);
-                if (btn) {
-                    btn.classList.remove('active', 'theme-all-active', 'theme-maxim-active', 'theme-yasya-active');
-                }
+                if (btn) btn.classList.remove('active');
             });
             if (currentStatFilter === 'all') {
-                document.getElementById('statToggleAll')?.classList.add('active', 'theme-all-active');
+                document.getElementById('statToggleAll')?.classList.add('active');
             } else if (currentStatFilter === 'maxim') {
-                document.getElementById('statToggleMaxim')?.classList.add('active', 'theme-maxim-active');
+                document.getElementById('statToggleMaxim')?.classList.add('active');
             } else if (currentStatFilter === 'yasya') {
-                document.getElementById('statToggleYasya')?.classList.add('active', 'theme-yasya-active');
+                document.getElementById('statToggleYasya')?.classList.add('active');
             }
 
             // 2. Доли расходов за месяц (Полоса долей)
